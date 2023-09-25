@@ -219,9 +219,6 @@ asthmaVolcanoPlot<-function(res){
 asthmaVolcanoPlot(res)
 
 
-
-
-
 #######
 # DEG modeled based on serum counts 
 
