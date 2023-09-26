@@ -12,7 +12,7 @@ library(gplots)
 ############
 # if working on HPC, set WD as YJ's asthma_transcriptome folder
 # if working on local PC, set WD as YJ's asthma-allergy-bunyavanich folder on windows
-ifelse(getwd()=="/hpc/users/kimy56",
+ifelse(getwd()=="/sc/arion/projects/asthma-allergy/MS_asthma/Young-Jin/asthma_transcriptome",
        setwd("/sc/arion/projects/asthma-allergy/MS_asthma/Young-Jin/asthma_transcriptome"),
        setwd("C:/Users/kimyo/Dropbox/Research/asthma-allergy-bunyavanich"))
 

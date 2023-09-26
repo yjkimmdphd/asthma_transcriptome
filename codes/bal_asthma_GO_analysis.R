@@ -44,8 +44,8 @@ supportedOrganisms()[supportedOrganisms()$Genome=="hg19",]
 ###################################################
 ### code chunk number 11: pwf
 ###################################################
-pwf=nullp(genes,"hg19","ensGene")
-head(pwf)
+pwf.25=nullp(genes.25,"hg38","knownGene")
+head(pwf.25)
 
 
 ###################################################
