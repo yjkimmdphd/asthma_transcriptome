@@ -123,14 +123,15 @@ p.counts$Race_corrected<-factor(p.counts$Race_corrected, levels=p.counts$Race_co
 ################################################
 ## calculate time difference between BAL and CBC
 ################################################
-p.counts<-p.counts%>%mutate(BAL_Date=BAL_Date%>%as.Date(format="%m/%d/%Y"), 
-                            Blood_draw_date=Blood_draw_date%>%as.Date(format="%m/%d/%Y"),
-                            BAL_CBC_delay=BAL_Date%>%as.Date(format="%m/%d/%Y")-Blood_draw_date%>%as.Date(format="%m/%d/%Y"))
+p.counts<-mutate(p.counts,BAL_Date=BAL_Date%>%as.Date(format="%m/%d/%Y"), 
+	Blood_draw_date=Blood_draw_date%>%as.Date(format="%m/%d/%Y"), 
+	BAL_CBC_delay=as.Date(BAL_Date,format="%m/%d/%Y")-as.Date(Blood_draw_date,format="%m/%d/%Y"))
 
 
-# some serum or Eos counts are NA of missing values
+## some serum or Eos counts are NA of missing values
 # make phenotype and count table removing NA
 # could conveniently use na.omit(), but that would remove too many data points and reduce power 
+
 a<-sapply(p.counts,is.na)
 a1<- unique(which(a==TRUE)%%45)
 p.counts[a1,]
@@ -171,10 +172,10 @@ cbc.bal.delay.abs=data.frame(
 print(pc.cn.df)    
 print(cbc.bal.delay)
 print(p.counts%>%select(SampleID,BAL_CBC_delay)%>%arrange(desc(BAL_CBC_delay)))
-bal.cbc.hist<-hist(delay.input$BAL_CBC_delay%>%as.numeric, 
-     breaks=seq(-1000,4000,100), 
-     xlab="BAL date - CBC date (days)", 
-     ylab="number of samples")
+# bal.cbc.hist<-hist(delay.input$BAL_CBC_delay%>%as.numeric, 
+#     breaks=seq(-1000,4000,100), 
+#     xlab="BAL date - CBC date (days)", 
+#     ylab="number of samples")
 
 
 ###########################################
