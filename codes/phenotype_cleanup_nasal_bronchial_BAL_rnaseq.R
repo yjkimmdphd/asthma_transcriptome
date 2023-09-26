@@ -131,6 +131,13 @@ hist(delay.input$BAL_CBC_delay%>%as.numeric,
      breaks=seq(-1000,4000,100), 
      xlab="BAL date - CBC date (days)", 
      ylab="number of samples")
+
+#### find which are going to be predictor variables for gene expressions, i.e., names of the log transformed cell counts
+# save as 'p.counts.var'
+
+p.counts.var<-
+  colnames(p.counts)[grep("log",colnames(p.counts))]
+
 ##### make dataframe of input values that will be used for DEG with DESeq2
 # save as 'df.deseq2input'
 # x is original count table

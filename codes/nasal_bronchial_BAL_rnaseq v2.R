@@ -10,22 +10,36 @@ library(gplots)
 ############
 # count data and phenotype
 ############
+# if working on HPC, set WD as YJ's asthma_transcriptome folder
+# if working on local PC, set WD as YJ's asthma-allergy-bunyavanich folder on windows
+ifelse(getwd()=="/hpc/users/kimy56",
+       setwd("/sc/arion/projects/asthma-allergy/MS_asthma/Young-Jin/asthma_transcriptome"),
+       setwd("C:/Users/kimyo/Dropbox/Research/asthma-allergy-bunyavanich"))
+
+ifelse(getwd()=="/sc/arion/projects/asthma-allergy/MS_asthma/Young-Jin/asthma_transcriptome",WDlocation<-"Minerva",WDlocation<-"localPC")
+
+# setting directory for count data when working on local PC
+file.pc<-c("C:/Users/kimyo/Dropbox/Research/asthma-allergy-bunyavanich/input/original_data/MS_asthma/batch1234_readcount_matrix_allsamples.afterQC.txt")
+file.b5.pc<-c("C:/Users/kimyo/Dropbox/Research/asthma-allergy-bunyavanich/input/original_data/MS_asthma/AsthmaNasal_RNAseq.batch5.geneID_readcount_rmscaffold_highqualitysamples.txt")
+
+# setting directory for count data when working on HPC minerva
+file.minerva<-c("/sc/arion/projects/asthma-allergy/MS_asthma/outputs/batch1234_combined/read_count/batch1234_readcount_matrix_allsamples.afterQC.txt")
+file.b5.minerva<-c("/sc/arion/projects/asthma-allergy/MS_asthma/outputs/batch5/read_count/AsthmaNasal_RNAseq.batch5.geneID_readcount_rmscaffold_highqualitysamples.txt")
+
+
 
 # reading count data for batch1,2,3,4 and saving as 'counts'
-file<-c("C:/Users/kimyo/Dropbox/Research/asthma-allergy-bunyavanich/input/original_data/MS_asthma/batch1234_readcount_matrix_allsamples.afterQC.txt")
+file<-ifelse(WDlocation=="Minerva",file.minerva,file.pc)
 file.exists(file)
 counts<-read.delim(file[1])
 counts.ID<-colnames(counts)
 
 # reading count data for batch 5 as 'counts.b5'
-file.b5<-c("C:/Users/kimyo/Dropbox/Research/asthma-allergy-bunyavanich/input/original_data/MS_asthma/AsthmaNasal_RNAseq.batch5.geneID_readcount_rmscaffold_highqualitysamples.txt")
+file.b5<-ifelse(WDlocation=="Minerva",file.b5.minerva,file.b5.pc)
 file.exists(file.b5)
 counts.b5<-read.delim(file.b5[1])
 counds.b5ID<-colnames(counts.b5)
 
-
-# load phenotype data by sourcing the following code 
-source("./codes/phenotype_cleanup_nasal_bronchial_BAL_rnaseq.R")
 
 # select just the nasal RNAseq counts
 b<-counts.ID%in%nasal.ID
@@ -45,7 +59,7 @@ M<-median(colSums(x))*1e-6 # median library size
 
 
 ###########################################
-# Normalising gene expression distributions
+# filtering genes
 ###########################################
 
 #x3 is the TMM normalized count
@@ -60,42 +74,6 @@ for(i in 1:sample.size){
 
 # calculate lcpm based on TMM normalized counts 
 lcpm.x3<-cpm(x3,log=TRUE)
-
-
-##############
-#MDS by groups
-##############
-
-# color coding based on each factor levels of sex, age, BAL Eos%, and batch sourced from the following code:
-source("./codes/mds_color_code_nasal_bronchial_BAL_rnaseq.R")
-
-# plot the MDS
-par(mfrow=c(2,2))
-mds.eos<-plotMDS(lcpm.x3,  col= col$eos, labels=p.counts$BAL_Eos_perc, main="Eos %")
-mds.batch<-plotMDS(lcpm.x3,  col= col$batch, labels=p.counts$Batch, main="batch")
-mds.age<-plotMDS(lcpm.x3,  col= col$age, labels=p.counts$Age, main = "age")
-mds.race<-plotMDS(lcpm.x3,  col= col$race, labels=p.counts$Race_corrected, main = "race")
-
-# MDS shows significant batch effect
-
-# checking if covariates have batch effect:
-
-cov.data<-p.counts[,c(33,3:22)]
-cov.data<-cov.data[,c(1,grep("log",cov.data%>%colnames))]
-vari<-colnames(cov.data[-1])
-
-models <- lapply(vari,function(x){y<-as.formula(paste0(x,"~Batch"));return(y)})
-aov.results<-lapply(models,function(x){aov(x,data=cov.data)%>%summary}) #> none of the covariates have a significant batch effect
-
-# make a heat map
-batch<-p.counts$Batch%>%as.character
-hm.matrix<-as.matrix(cov.data[,-1], dimnames=list(batch,vari))
-rownames(hm.matrix)<-batch
-hm.matrix%>%replace(is.na(.),-1)%>%heatmap.2(srtCol = 25,adjCol = c(0.95,-0.5)) #> shows heatmap
-##########################################
-# make input dataframe for DEG with DESeq2
-##########################################
-library(DESeq2)
 
 #### Removing genes that are lowly expressed
 
@@ -119,11 +97,44 @@ x2<-x[-drop,]
 x2.BalNeut<-x2[,c( p.count.BalNeut$SampleID)] # count table for DEG using BAL Neut information as predictor
 x2.SerCt<-x2[,c(p.count.SerCt$SampleID)]# count table for DEG using serum cell counts information as predictor
 
-#### find which are going to be predictor variables for gene expressions, i.e., names of the log transformed cell counts
-# save as 'p.counts.var'
 
-p.counts.var<-
-  colnames(p.counts)[grep("log",colnames(p.counts))]
+# load phenotype data by sourcing the following code 
+source("./codes/phenotype_cleanup_nasal_bronchial_BAL_rnaseq.R")
+
+##############
+#MDS by groups
+##############
+
+# color coding based on each factor levels of sex, age, BAL Eos%, and batch sourced from the following code:
+source("./codes/mds_color_code_nasal_bronchial_BAL_rnaseq.R")
+
+# plot the MDS
+par(mfrow=c(2,2))
+mds.eos<-plotMDS(lcpm.x3,  col= col$eos, labels=p.counts$BAL_Eos_perc, main="Eos %")
+mds.batch<-plotMDS(lcpm.x3,  col= col$batch, labels=p.counts$Batch, main="batch")
+mds.age<-plotMDS(lcpm.x3,  col= col$age, labels=p.counts$Age, main = "age")
+mds.race<-plotMDS(lcpm.x3,  col= col$race, labels=p.counts$Race_corrected, main = "race")
+
+# MDS shows significant batch effect
+
+# checking if covariates have batch effect:
+
+cov.data<-cbind(Batch=p.counts$Batch,p.counts[,c(3:23)])
+cov.data<-cov.data[,c(1,grep("log",cov.data%>%colnames))]
+vari<-colnames(cov.data[-1])
+
+models <- lapply(vari,function(x){y<-as.formula(paste0(x,"~Batch"));return(y)})
+aov.results<-lapply(models,function(x){aov(x,data=cov.data)%>%summary}) #> none of the covariates have a significant batch effect
+
+# make a heat map
+batch<-p.counts$Batch%>%as.character
+hm.matrix<-as.matrix(cov.data[,-1], dimnames=list(batch,vari))
+rownames(hm.matrix)<-batch
+hm.matrix%>%replace(is.na(.),-1)%>%heatmap.2(srtCol = 25,adjCol = c(0.95,-0.5)) #> shows heatmap
+##########################################
+# make input dataframe for DEG with DESeq2
+##########################################
+library(DESeq2)
 
 
 #### define function deseq2DEG 
@@ -219,12 +230,12 @@ write.csv(deg.tab,file.path(getwd(),"output",paste0("DEG_table_",Sys.Date(),".cs
 
 
 #Make a basic volcano plot
-
-with(res4, plot(log2FoldChange, -log10(pvalue), pch=20, main="Volcano plot", xlim=c(-3,3)))
+ 
+#with(res4, plot(log2FoldChange, -log10(pvalue), pch=20, main="Volcano plot", xlim=c(-3,3)))
 
 # Add colored points: blue if padj<0.01, red if log2FC>1 and padj<0.05)
-with(subset(res4, padj<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="green"))
-with(subset(res4, padj<.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(pvalue), pch=20, col="red"))
+#with(subset(res4, padj<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="green"))
+#with(subset(res4, padj<.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(pvalue), pch=20, col="red"))
 
 ########################################################
 # DEG comparing zero vs nonZero Eos/Neut in BAL or serum
@@ -322,3 +333,4 @@ for(i in 29:31){
   write.csv(a[[1]],file.path(getwd(),"output",paste0("DEG_","res",i,"_",res.table[i,"fluid_cell"],"_",Sys.Date(),".csv")))
   res.table[i,"output"]<-paste0("DEG_","res",i,"_",res.table[i,"fluid_cell"],"_",Sys.Date(),".csv")
 }
+
