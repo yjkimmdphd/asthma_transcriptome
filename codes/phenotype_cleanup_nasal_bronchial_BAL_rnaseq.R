@@ -171,7 +171,7 @@ cbc.bal.delay.abs=data.frame(
 print(pc.cn.df)    
 print(cbc.bal.delay)
 print(p.counts%>%select(SampleID,BAL_CBC_delay)%>%arrange(desc(BAL_CBC_delay)))
-hist(delay.input$BAL_CBC_delay%>%as.numeric, 
+bal.cbc.hist<-hist(delay.input$BAL_CBC_delay%>%as.numeric, 
      breaks=seq(-1000,4000,100), 
      xlab="BAL date - CBC date (days)", 
      ylab="number of samples")

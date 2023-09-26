@@ -21,10 +21,10 @@ source("./codes/mds_color_code_nasal_bronchial_BAL_rnaseq.R")
 # plot the MDS
 pdf(file= file.path(getwd(),"output/mds_eos_batch_age_race.pdf" ))
 par(mfrow=c(2,2))
-mds.eos<-plotMDS(lcpm.x3,  col= col$eos, labels=p.counts$BAL_Eos_perc, main="Eos %")
-mds.batch<-plotMDS(lcpm.x3,  col= col$batch, labels=p.counts$Batch, main="batch")
-mds.age<-plotMDS(lcpm.x3,  col= col$age, labels=p.counts$Age, main = "age")
-mds.race<-plotMDS(lcpm.x3,  col= col$race, labels=p.counts$Race_corrected, main = "race")
+mds.eos<-plotMDS(lcpm.x3,  col= col$eos, labels=p.counts$BAL_Eos_perc, main="Eos %", plot=FALSE)
+mds.batch<-plotMDS(lcpm.x3,  col= col$batch, labels=p.counts$Batch, main="batch",plot=FALSE)
+mds.age<-plotMDS(lcpm.x3,  col= col$age, labels=p.counts$Age, main = "age", plot=FALSE)
+mds.race<-plotMDS(lcpm.x3,  col= col$race, labels=p.counts$Race_corrected, main = "race",plot=FALSE)
 dev.off()
 # MDS shows significant batch effect
 
