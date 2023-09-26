@@ -7,96 +7,6 @@ library(limma)
 library(Glimma)
 library(edgeR)
 library(gplots)
-############
-# count data and phenotype
-############
-# if working on HPC, set WD as YJ's asthma_transcriptome folder
-# if working on local PC, set WD as YJ's asthma-allergy-bunyavanich folder on windows
-ifelse(getwd()=="/sc/arion/projects/asthma-allergy/MS_asthma/Young-Jin/asthma_transcriptome",
-       setwd("/sc/arion/projects/asthma-allergy/MS_asthma/Young-Jin/asthma_transcriptome"),
-       setwd("C:/Users/kimyo/Dropbox/Research/asthma-allergy-bunyavanich"))
-
-ifelse(getwd()=="/sc/arion/projects/asthma-allergy/MS_asthma/Young-Jin/asthma_transcriptome",WDlocation<-"Minerva",WDlocation<-"localPC")
-
-# setting directory for count data when working on local PC
-file.pc<-c("C:/Users/kimyo/Dropbox/Research/asthma-allergy-bunyavanich/input/original_data/MS_asthma/batch1234_readcount_matrix_allsamples.afterQC.txt")
-file.b5.pc<-c("C:/Users/kimyo/Dropbox/Research/asthma-allergy-bunyavanich/input/original_data/MS_asthma/AsthmaNasal_RNAseq.batch5.geneID_readcount_rmscaffold_highqualitysamples.txt")
-
-# setting directory for count data when working on HPC minerva
-file.minerva<-c("/sc/arion/projects/asthma-allergy/MS_asthma/outputs/batch1234_combined/read_count/batch1234_readcount_matrix_allsamples.afterQC.txt")
-file.b5.minerva<-c("/sc/arion/projects/asthma-allergy/MS_asthma/outputs/batch5/read_count/AsthmaNasal_RNAseq.batch5.geneID_readcount_rmscaffold_highqualitysamples.txt")
-
-
-
-# reading count data for batch1,2,3,4 and saving as 'counts'
-file<-ifelse(WDlocation=="Minerva",file.minerva,file.pc)
-file.exists(file)
-counts<-read.delim(file[1])
-counts.ID<-colnames(counts)
-
-# reading count data for batch 5 as 'counts.b5'
-file.b5<-ifelse(WDlocation=="Minerva",file.b5.minerva,file.b5.pc)
-file.exists(file.b5)
-counts.b5<-read.delim(file.b5[1])
-counds.b5ID<-colnames(counts.b5)
-
-
-# select just the nasal RNAseq counts
-b<-counts.ID%in%nasal.ID
-
-x<-counts[,b]
-genes<-counts$SampleID
-rownames(x)<-genes
-x.BalNeut<-x[,c( p.count.BalNeut$SampleID)] # count table for DEG using BAL Neut information as predictor
-x.SerCt<-x[,c(p.count.SerCt$SampleID)]# count table for DEG using serum cell counts information as predictor
-
-# convert raw counts to CPM
-# average coverage is ~51 million
-cpm0 <-cpm(x)
-lcpm0<-cpm(x,log=TRUE)
-L<-mean(colSums(x))*1e-6 # mean library size
-M<-median(colSums(x))*1e-6 # median library size
-
-
-###########################################
-# filtering genes
-###########################################
-
-#x3 is the TMM normalized count
-# normalize counts with TMM
-norm.factor<-calcNormFactors(x, method = "TMM")
-
-x3<-x
-sample.size<-length(colnames(x3))
-for(i in 1:sample.size){
-  x3[,i]<-x3[,i]/norm.factor[i]
-}
-
-# calculate lcpm based on TMM normalized counts 
-lcpm.x3<-cpm(x3,log=TRUE)
-
-#### Removing genes that are lowly expressed
-
-# checking how many genes have 0 count across all samples
-table(rowSums(x==0)==45)
-# about 4% of the genes have 0 counts across all samples 
-
-# setting a lcpm cutoff for filtering genes with very low counts
-lcpm.cutoff <- log2(10/M + 2/L)
-dropCutoff<-function(cutoff){
-  which(apply(lcpm.x3, 1, max) < cutoff)
-}
-drop <-dropCutoff(0) 
-drop2<-dropCutoff(lcpm.cutoff)
-dim(x3[-drop,])
-dim(x3[-drop2,])
-
-#define x2 as a new count table after filtering low expressed genes from x
-x2<-x[-drop,]
-
-x2.BalNeut<-x2[,c( p.count.BalNeut$SampleID)] # count table for DEG using BAL Neut information as predictor
-x2.SerCt<-x2[,c(p.count.SerCt$SampleID)]# count table for DEG using serum cell counts information as predictor
-
 
 # load phenotype data by sourcing the following code 
 source("./codes/phenotype_cleanup_nasal_bronchial_BAL_rnaseq.R")
@@ -109,12 +19,13 @@ source("./codes/phenotype_cleanup_nasal_bronchial_BAL_rnaseq.R")
 source("./codes/mds_color_code_nasal_bronchial_BAL_rnaseq.R")
 
 # plot the MDS
+pdf(file= file.path(getwd(),"output/mds_eos_batch_age_race.pdf" ))
 par(mfrow=c(2,2))
 mds.eos<-plotMDS(lcpm.x3,  col= col$eos, labels=p.counts$BAL_Eos_perc, main="Eos %")
 mds.batch<-plotMDS(lcpm.x3,  col= col$batch, labels=p.counts$Batch, main="batch")
 mds.age<-plotMDS(lcpm.x3,  col= col$age, labels=p.counts$Age, main = "age")
 mds.race<-plotMDS(lcpm.x3,  col= col$race, labels=p.counts$Race_corrected, main = "race")
-
+dev.off()
 # MDS shows significant batch effect
 
 # checking if covariates have batch effect:
@@ -125,28 +36,61 @@ vari<-colnames(cov.data[-1])
 
 models <- lapply(vari,function(x){y<-as.formula(paste0(x,"~Batch"));return(y)})
 aov.results<-lapply(models,function(x){aov(x,data=cov.data)%>%summary}) #> none of the covariates have a significant batch effect
+capture.output(aov.results,file=file.path(getwd(),"output/cov_aov_assoc.txt")) #> write aov result
 
-# make a heat map
+# make a heat map of each predictor variable, and see if they cluster based on batch
+pdf(file= file.path(getwd(),"output/cov_batch_heatmap.pdf" ))
+par(mfrow=c(1,1))
 batch<-p.counts$Batch%>%as.character
 hm.matrix<-as.matrix(cov.data[,-1], dimnames=list(batch,vari))
 rownames(hm.matrix)<-batch
 hm.matrix%>%replace(is.na(.),-1)%>%heatmap.2(srtCol = 25,adjCol = c(0.95,-0.5)) #> shows heatmap
+dev.off()
+
 ##########################################
 # make input dataframe for DEG with DESeq2
 ##########################################
 library(DESeq2)
 
+#### find which are going to be predictor variables for gene expressions, i.e., names of the log transformed cell counts
+# save as 'p.counts.var'
+p.counts.var<-
+  colnames(p.counts)[grep("log",colnames(p.counts))]
 
-#### define function deseq2DEG 
-deseq2DEG<-function(countdata,coldata,design,resultname){
-  dds<-DESeqDataSetFromMatrix(countData = get(countdata),colData=get(coldata), design=as.formula(design))
-  dds<-DESeq(dds)
-  res<-results(dds, name=resultname)
-  res <- res[order(res$padj),]
-    # signficant results with padj<0.05
-  res.sig<-res[which(res$padj<0.05),]
-  return(list(res,res.sig))
-}
+##### make dataframe of input values that will be used for DEG with DESeq2
+# save as 'df.deseq2input'
+# x is original count table
+# x2 is x filtered for low gene counts
+df.deseq2input<-data.frame(count.data="x",
+                           col.data="p.counts", 
+                           design = paste0("~ ",p.counts.var," + Batch"), 
+                           resoutput = p.counts.var)
+df.deseq2input[c(3,4),1:2]<-data.frame(rep("x.BalNeut",2),rep("p.count.BalNeut",2))
+df.deseq2input[6:10,1:2]<-data.frame(rep("x.SerCt",5),rep("p.count.SerCt",5))
+df.input2<-df.deseq2input%>%mutate(count.data=sub("x","x2",count.data))
+df.deseq2input<-rbind(df.deseq2input,df.input2)
+print(df.deseq2input)
+
+
+# update 'df.deseq2input'
+input.pos<-data.frame(count.data=rep(c("x.BalEos.pos", "x.BalNeut.pos", "x.serEos.pos", "x.serNeut.pos",
+                            "x2.BalEos.pos","x2.BalNeut.pos","x2.serEos.pos","x2.serNeut.pos"),
+                          each=2))
+input.pos$col.data<-rep(rep(c("p.BalEos.pos","p.BalNeut.pos","p.serEos.pos","p.serNeut.pos"),each=2),2)
+input.pos$design<-rep((df.deseq2input[c(1:4,6:9),"design"]),2)
+input.pos$resoutput<-rep((df.deseq2input[c(1:4,6:9),"resoutput"]),2)
+df.deseq2input<-rbind(df.deseq2input,input.pos)
+print(df.deseq2input)
+
+input<-df.deseq2input
+z.counts<-c("zero.BALEosnonZero","zero.BALNeutnonZero","zero.serEosnonZero")
+z.input<-data.frame(count.data=input[c(11,13,16),"count.data"],
+                    col.data=input[c(11,13,16),"col.data"],
+                    design = paste0("~ ",z.counts," + Batch"),
+                    resoutput = z.counts)
+df.deseq2input<-rbind(input,z.input)
+print(df.deseq2input)
+
 
 #### summary of analysis is saved in 'res.table'
 fluid.cell.sample<-sapply(df.deseq2input$resoutput,function(d){substring(d,1,7)})
@@ -161,17 +105,31 @@ res.table<-data.frame(software="DESEq2",
                       sig.genes=0,
                       count_data=df.deseq2input$count.data)
 print(res.table)
-# run the DEG 
-###################################################
-# DEG
-# df.deseq2input sourced from phenotype_cleanup_nasal_bronchial_BAL_rnaseq.R
 
-for(i in 1:nrow(df.deseq2input)){
+#######################################
+# run the DEG for continuous predictors
+#######################################
+
+#### define function deseq2DEG 
+deseq2DEG<-function(countdata,coldata,design,resultname){
+  dds<-DESeqDataSetFromMatrix(countData = get(countdata),colData=get(coldata), design=as.formula(design))
+  dds<-DESeq(dds)
+  res<-results(dds, name=resultname)
+  res <- res[order(res$padj),]
+  # signficant results with padj<0.05
+  res.sig<-res[which(res$padj<0.05),]
+  return(list(res,res.sig))
+}
+
+zero.var<-grep("zero",res.table$fluid_cell)
+cont.var<-grep("zero",res.table$fluid_cell, invert=TRUE)
+
+for(i in cont.var){
   assign(paste0("res",i),deseq2DEG(df.deseq2input[i,1],df.deseq2input[i,2],df.deseq2input[i,3],df.deseq2input[i,4]))
 }
 
 # summarize number of significant genes in the 'res.table'
-for(i in 1:nrow(res.table)){
+for(i in cont.var){
   res.table[i,"sig.genes"]<-get(paste0("res",i))[[2]]%>%nrow
   res.table[i,"results"]<-paste0("res",i)
 }
@@ -180,7 +138,7 @@ print(res.table)
 
 # write results
 
-for(i in 1:28){
+for(i in cont.var){
   a<-get(paste0("res",i))
   write.csv(a[[1]],file.path(getwd(),"output",paste0("DEG_","res",i,"_",res.table[i,"fluid_cell"],"_",Sys.Date(),".csv")))
   res.table[i,"output"]<-paste0("DEG_","res",i,"_",res.table[i,"fluid_cell"],"_",Sys.Date(),".csv")
@@ -189,11 +147,11 @@ for(i in 1:28){
 print(res.table)
 
 write.csv(res.table,file.path(getwd(),"output",paste0("res.table_",Sys.Date(),".csv")))
-
+##############################
 # make list of significant DEG 
 ##############################
 
-res.list=c(paste0("res",1:28))
+res.list=c(paste0("res",cont.var))
 gl<-numeric()
 for(i in 1:28){
   gl[i]<-get(res.list[i])[[2]]%>%nrow
@@ -252,21 +210,20 @@ deseq2DEG.disc<-function(countdata,coldata,des,resultname){
   res.sig<-res[which(res$padj<0.05),]
   return(list(res,res.sig))
 }
-
-# run the DEG 
-###################################################
+####################################
+# run the DEG on discrete predictors 
+####################################
 # DEG
 
+# make model
 ml<-list(zeroBalEos=model.matrix(~ zero.BALEos + Batch, p.counts),
          zero.BALNeut=model.matrix(~ zero.BALNeut + Batch, p.counts),
          zero.serEos=model.matrix(~ zero.serEos + Batch, p.counts),
          zero.serNeut=model.matrix(~ zero.serNeut + Batch, p.counts))
-deseq2DEG.disc(df.deseq2input[29,1], df.deseq2input[29,2],ml[[1]],df.deseq2input[29,4])
 
-for(i in 29:nrow(df.deseq2input)){
-  assign(paste0("res",i),deseq2DEG.disc(df.deseq2input[i,1],df.deseq2input[i,2],ml[[i-28]],df.deseq2input[i,4]))
+for(i in zero.var){
+  assign(paste0("res",i),deseq2DEG.disc(df.deseq2input[i,1],df.deseq2input[i,2],ml[[i-length(cont.var)]],df.deseq2input[i,4]))
 }
-deseq2DEG.disc(df.deseq2input[32,1], df.deseq2input[32,2],ml[[4]],df.deseq2input[32,4]) #> not a full rank, because all samples have at least ser.Neut>0
 
 # update the 'res.table' which summarize number of significant genes
 fluid.cell.sample<-sapply(df.deseq2input$resoutput,function(d){substring(d,1,7)})
@@ -280,22 +237,24 @@ res.table<-data.frame(software="DESEq2",
                       model=df.deseq2input$design,
                       sig.genes=0,
                       count_data=df.deseq2input$count.data)
-res.table<-res.table[-32,]
-res.table$fluid_cell[29:31]<-c("BAL_Eos","BAL_neut","serum_E")
-res.table$units[29:31]<-c("0 vs >0")
+res.table$fluid_cell[zero.var]<-c("BAL_Eos","BAL_neut","serum_E")
+res.table$units[zero.var]<-c("0 vs >0")
 
 print(res.table)
 
-for(i in 1:nrow(res.table)){
+for(i in zero.var){
   res.table[i,"sig.genes"]<-get(paste0("res",i))[[2]]%>%nrow
   res.table[i,"results"]<-paste0("res",i)
 }
 print(res.table)
 
 
-res.list=c(paste0("res",1:31))
+######
+## write DEG table
+
+res.list=c(paste0("res",1:nrow(res.table)))
 gl<-numeric()
-for(i in 1:31){
+for(i in 1:nrow(res.table)){
   gl[i]<-get(res.list[i])[[2]]%>%nrow
 }
 gl[which(gl==0)]<-1
@@ -328,7 +287,7 @@ table(deg.tab$genes)%>%as.data.frame()%>%arrange(desc(Freq))
 # save results as CSV files
 write.csv(deg.tab,file.path(getwd(),"output",paste0("DEG_table_",Sys.Date(),".csv")))
 write.csv(res.table,file.path(getwd(),"output",paste0("res.table_",Sys.Date(),".csv")))
-for(i in 29:31){
+for(i in zero.var){
   a<-get(paste0("res",i))
   write.csv(a[[1]],file.path(getwd(),"output",paste0("DEG_","res",i,"_",res.table[i,"fluid_cell"],"_",Sys.Date(),".csv")))
   res.table[i,"output"]<-paste0("DEG_","res",i,"_",res.table[i,"fluid_cell"],"_",Sys.Date(),".csv")

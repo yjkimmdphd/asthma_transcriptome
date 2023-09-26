@@ -3,10 +3,46 @@
 #########################
 
 library(dplyr)
+############################################
+## set working directory and load count data
+############################################
+# if working on HPC, set WD as YJ's asthma_transcriptome folder
+# if working on local PC, set WD as YJ's asthma-allergy-bunyavanich folder on windows
+ifelse(getwd()=="/sc/arion/projects/asthma-allergy/MS_asthma/Young-Jin/asthma_transcriptome",
+       setwd("/sc/arion/projects/asthma-allergy/MS_asthma/Young-Jin/asthma_transcriptome"),
+       setwd("C:/Users/kimyo/Dropbox/Research/asthma-allergy-bunyavanich"))
 
+ifelse(getwd()=="/sc/arion/projects/asthma-allergy/MS_asthma/Young-Jin/asthma_transcriptome",WDlocation<-"Minerva",WDlocation<-"localPC")
+
+# setting directory for count data when working on local PC
+file.pc<-c("C:/Users/kimyo/Dropbox/Research/asthma-allergy-bunyavanich/input/original_data/MS_asthma/batch1234_readcount_matrix_allsamples.afterQC.txt")
+file.b5.pc<-c("C:/Users/kimyo/Dropbox/Research/asthma-allergy-bunyavanich/input/original_data/MS_asthma/AsthmaNasal_RNAseq.batch5.geneID_readcount_rmscaffold_highqualitysamples.txt")
+
+# setting directory for count data when working on HPC minerva
+file.minerva<-c("/sc/arion/projects/asthma-allergy/MS_asthma/outputs/batch1234_combined/read_count/batch1234_readcount_matrix_allsamples.afterQC.txt")
+file.b5.minerva<-c("/sc/arion/projects/asthma-allergy/MS_asthma/outputs/batch5/read_count/AsthmaNasal_RNAseq.batch5.geneID_readcount_rmscaffold_highqualitysamples.txt")
+
+
+
+# reading count data for batch1,2,3,4 and saving as 'counts'
+file<-ifelse(WDlocation=="Minerva",file.minerva,file.pc)
+file.exists(file)
+counts<-read.delim(file[1])
+counts.ID<-colnames(counts)
+
+# reading count data for batch 5 as 'counts.b5'
+file.b5<-ifelse(WDlocation=="Minerva",file.b5.minerva,file.b5.pc)
+file.exists(file.b5)
+counts.b5<-read.delim(file.b5[1])
+counds.b5ID<-colnames(counts.b5)
+
+
+############################################
+## load phenotype data
+############################################
 
 # asthma biomarker phenotype file, nasal, saved in  'phenotype'
-filename2<-file.path(getwd(),"input/asthma-phenotype-filtered-revised-2023-09-25.csv")
+filename2<-file.path(getwd(),"input/asthma-phenotype-filtered.csv")
 file.exists(filename2)
 phenotype<-read.csv(filename2)
 
@@ -14,6 +50,10 @@ phenotype<-read.csv(filename2)
 filename3<-file.path(getwd(),"input/original_data/MS_asthma/MS_asthma_phenotype.batch1234.txt")
 file.exists(filename3)
 batch.info<-read.delim(filename3)
+
+####################################################################
+## transform BAL and CBC information in the phenotype data as needed 
+####################################################################
 
 # calculate absolute Eos from total BAL WBC and BAL Eos %
 phenotype<-phenotype%>%mutate(
@@ -57,7 +97,9 @@ phenotype.counts<-phenotype[,c("subject_assgn",p.col[count.col],"Blood_draw_date
 phenotype.counts<-phenotype.counts[,c("subject_assgn",colnames(phenotype.counts)[-1]%>%sort)]
 colnames(phenotype.counts)[1]<-"SampleID"
 
-# find subject assignment ID with nasal and bronchial cell RNAseq data  
+#######################################################################
+## find subject assignment ID with nasal and bronchial cell RNAseq data  
+#######################################################################
 nasal.ID<-phenotype[,"subject_assgn"] # nasal study ID that have been collected
 bronch.ID<-sub("N","B",nasal.ID) # bronchial subject ID 
 nb.ID<-c(nasal.ID,bronch.ID) # nasal and bronchial subject ID
@@ -78,7 +120,9 @@ p.counts<-left_join(p.counts,batch.info.BAL, by="SampleID")
 p.counts$Batch<-factor(p.counts$Batch, levels=unique(batch.info.BAL$Batch))
 p.counts$Race_corrected<-factor(p.counts$Race_corrected, levels=p.counts$Race_corrected%>%unique)
 
-# calculate time difference between BAL and CBC
+################################################
+## calculate time difference between BAL and CBC
+################################################
 p.counts<-p.counts%>%mutate(BAL_Date=BAL_Date%>%as.Date(format="%m/%d/%Y"), 
                             Blood_draw_date=Blood_draw_date%>%as.Date(format="%m/%d/%Y"),
                             BAL_CBC_delay=BAL_Date%>%as.Date(format="%m/%d/%Y")-Blood_draw_date%>%as.Date(format="%m/%d/%Y"))
@@ -106,8 +150,8 @@ pc.cn<-pc.cn[-grep("log",pc.cn)]
 pc.cn<-pc.cn[c(3:7,9:13)]
 pcrange=sapply(p.counts[,pc.cn],function(d){range(d,na.rm=TRUE)})
 pc.cn.df<-data.frame(mean=sapply(p.counts[,pc.cn],function(d){mean(d,na.rm=TRUE)%>%round(2)}),
-                  sd=sapply(p.counts[,pc.cn],function(d){sd(d,na.rm=TRUE)%>%round(2)}),
-                  range=apply(pcrange,2,function(d){paste(d[1],d[2],sep="-")}))
+                     sd=sapply(p.counts[,pc.cn],function(d){sd(d,na.rm=TRUE)%>%round(2)}),
+                     range=apply(pcrange,2,function(d){paste(d[1],d[2],sep="-")}))
 
 delay.input<-p.counts
 delay.input<-delay.input%>%filter(BAL_CBC_delay<3000)
@@ -116,7 +160,7 @@ cbc.bal.delay=data.frame(
   sd.delay=delay.input$BAL_CBC_delay%>%sd(na.rm=TRUE)%>%round(2),
   range=paste(range(delay.input$BAL_CBC_delay,na.rm=TRUE)[1],
               range(delay.input$BAL_CBC_delay,na.rm=TRUE)[2],
-                           sep="-"))
+              sep="-"))
 cbc.bal.delay.abs=data.frame(
   mean.delay=delay.input$BAL_CBC_delay%>%abs%>%mean(na.rm=TRUE)%>%round(2),
   sd.delay=delay.input$BAL_CBC_delay%>%abs%>%sd(na.rm=TRUE)%>%round(2),
@@ -132,25 +176,64 @@ hist(delay.input$BAL_CBC_delay%>%as.numeric,
      xlab="BAL date - CBC date (days)", 
      ylab="number of samples")
 
-#### find which are going to be predictor variables for gene expressions, i.e., names of the log transformed cell counts
-# save as 'p.counts.var'
 
-p.counts.var<-
-  colnames(p.counts)[grep("log",colnames(p.counts))]
+###########################################
+## filtering counts table to remove low expressed genes
+###########################################
 
-##### make dataframe of input values that will be used for DEG with DESeq2
-# save as 'df.deseq2input'
-# x is original count table
-# x2 is x filtered for low gene counts
-df.deseq2input<-data.frame(count.data="x",
-                           col.data="p.counts", 
-                           design = paste0("~ ",p.counts.var," + Batch"), 
-                           resoutput = p.counts.var)
-df.deseq2input[c(3,4),1:2]<-data.frame(rep("x.BalNeut",2),rep("p.count.BalNeut",2))
-df.deseq2input[6:10,1:2]<-data.frame(rep("x.SerCt",5),rep("p.count.SerCt",5))
-df.input2<-df.deseq2input%>%mutate(count.data=sub("x","x2",count.data))
-df.deseq2input<-rbind(df.deseq2input,df.input2)
-print(df.deseq2input)
+# select just the nasal RNAseq counts
+b<-counts.ID%in%nasal.ID
+x<-counts[,b]
+genes<-counts$SampleID
+rownames(x)<-genes
+
+# convert raw counts to CPM
+# average coverage is ~51 million
+cpm0 <-cpm(x)
+lcpm0<-cpm(x,log=TRUE)
+L<-mean(colSums(x))*1e-6 # mean library size
+M<-median(colSums(x))*1e-6 # median library size
+
+
+#x3 is the TMM normalized count
+# normalize counts with TMM
+norm.factor<-calcNormFactors(x, method = "TMM")
+
+x3<-x
+sample.size<-length(colnames(x3))
+for(i in 1:sample.size){
+  x3[,i]<-x3[,i]/norm.factor[i]
+}
+
+# calculate lcpm based on TMM normalized counts 
+lcpm.x3<-cpm(x3,log=TRUE)
+
+#### Removing genes that are lowly expressed
+
+# checking how many genes have 0 count across all samples
+table(rowSums(x==0)==45)
+# about 4% of the genes have 0 counts across all samples 
+
+# setting a lcpm cutoff for filtering genes with very low counts
+lcpm.cutoff <- log2(10/M + 2/L)
+dropCutoff<-function(cutoff){
+  which(apply(lcpm.x3, 1, max) < cutoff)
+}
+drop <-dropCutoff(0) 
+drop2<-dropCutoff(lcpm.cutoff)
+dim(x3[-drop,])
+dim(x3[-drop2,])
+
+################################################################################################
+## subsetting counts table based on the BAL and CBC data availability and gene expression filter
+################################################################################################
+x.BalNeut<-x[,c( p.count.BalNeut$SampleID)] # count table for DEG using BAL Neut information as predictor
+x.SerCt<-x[,c(p.count.SerCt$SampleID)]# count table for DEG using serum cell counts information as predictor
+
+x2<-x[-drop,]
+
+x2.BalNeut<-x2[,c( p.count.BalNeut$SampleID)] # count table for DEG using BAL Neut information as predictor
+x2.SerCt<-x2[,c(p.count.SerCt$SampleID)]# count table for DEG using serum cell counts information as predictor
 
 #### filtering phenotype table based on cell counts
 p.BalEos.pos<-p.counts%>%filter(bal_Eos_ct>0)
@@ -159,22 +242,12 @@ p.serEos.pos<-p.counts%>%filter(serum_Eos>0)
 p.serNeut.pos<-p.counts%>%filter(serum_Neut>0)
 
 #### make new count tables with sampleID filtered for cell counts
+x.BalEos.pos<-x[,p.BalEos.pos$SampleID]
+x.BalNeut.pos<-x[,p.BalNeut.pos$SampleID]
+x.serEos.pos<-x[,p.serEos.pos$SampleID]
+x.serNeut.pos<-x[,p.serNeut.pos$SampleID]
+
 x2.BalEos.pos<-x2[,p.BalEos.pos$SampleID]
 x2.BalNeut.pos<-x2[,p.BalNeut.pos$SampleID]
 x2.serEos.pos<-x2[,p.serEos.pos$SampleID]
 x2.serNeut.pos<-x2[,p.serNeut.pos$SampleID]
-
-# update 'df.deseq2input'
-df.deseq2input[21:28,"count.data"]<-rep(c("x2.BalEos.pos","x2.BalNeut.pos","x2.serEos.pos","x2.serNeut.pos"),each=2)
-df.deseq2input[21:28,"col.data"]<-rep(c("p.BalEos.pos","p.BalNeut.pos","p.serEos.pos","p.serNeut.pos"),each=2)
-df.deseq2input[21:28,c("design","resoutput")]<-df.deseq2input[c(1:4,6:9),c("design","resoutput")]
-print(df.deseq2input)
-
-input<-df.deseq2input
-z.counts<-c("zero.BALEosnonZero","zero.BALNeutnonZero","zero.serEosnonZero","zero.serNeutnonZero")
-z.input<-data.frame(count.data=input[c(11,13,16,17),"count.data"],
-           col.data=input[c(11,13,16,17),"col.data"],
-           design = paste0("~ ",z.counts," + Batch"),
-           resoutput = z.counts)
-df.deseq2input<-rbind(input,z.input)
-print(df.deseq2input)
