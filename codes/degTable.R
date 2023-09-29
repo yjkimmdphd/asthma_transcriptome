@@ -1,6 +1,7 @@
 ##############
 ## exploring DEG results
 ########################
+library(tidyverse)
 fp<-file.path(getwd(),"output/DEG_2023-09-26")
 if(file.exists(fp)){
   flist<-list.files(fp)[1:36]
