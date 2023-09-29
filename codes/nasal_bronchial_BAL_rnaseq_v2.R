@@ -140,9 +140,11 @@ print(res.table)
 
 for(i in cont.var){
   a<-get(paste0("res",i))
-  write.csv(a[[1]],file.path(getwd(),"output",paste0("DEG_","res",i,"_",res.table[i,"fluid_cell"],"_",Sys.Date(),".csv")))
+  write.csv(a[[1]],row.names=TRUE,file.path(getwd(),"output",paste0("DEG_","res",i,"_",res.table[i,"fluid_cell"],"_",Sys.Date(),".csv")))
   res.table[i,"output"]<-paste0("DEG_","res",i,"_",res.table[i,"fluid_cell"],"_",Sys.Date(),".csv")
 }
+
+
 
 print(res.table)
 
@@ -153,7 +155,7 @@ write.csv(res.table,file.path(getwd(),"output",paste0("res.table_",Sys.Date(),".
 
 res.list=c(paste0("res",cont.var))
 gl<-numeric()
-for(i in 1:28){
+for(i in cont.var){
   gl[i]<-get(res.list[i])[[2]]%>%nrow
 }
 gl[which(gl==0)]<-1

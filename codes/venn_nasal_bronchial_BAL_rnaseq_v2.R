@@ -2,60 +2,50 @@
 # analyzing overlap of DEG in different analysis in nasal_bronchial_BAL_rnaseq_v2.R
 ###################################################################################
 library(dplyr)
-deg.tab<-file.path(getwd(),"output/DEG_table_2023-09-20.csv")%>%read.csv
-
+sig.deg<-file.path(getwd(),"output/sig_deg_2023-09-28.csv")%>%read.csv
+res.table<-file.path(getwd(),"output/res.table_2023-09-28.csv")%>%read.csv%>%na.omit
+sig.deg<-left_join(sig.deg,res.table)%>%group_by(fluid_cell,results,units,count_data)
+pred<-sig.deg$fluid_cell%>%unique
 # vendiagram of DEG of serum Eos abs count and % as predictors, if including 0% = Eos%
-deg.tab.serEos<-filter(deg.tab,results=="res6"|results=="res7"|results=="res16"|results=="res17")
-deg.tab.serEos$genes%>%table
-genelist<-list(
-  ser_AEC1=filter(deg.tab,results=="res6")%>%select(genes),
-  ser_Eos_p1=filter(deg.tab,results=="res7")%>%select(genes),
-  ser_AEC2=filter(deg.tab,results=="res16")%>%select(genes),
-  ser_Eos_p2=filter(deg.tab,results=="res17")%>%select(genes)
-)
 
 library(gplots)
-v.table1<-venn(genelist[1:4])
-v.table2<-venn(genelist[1:2])
-v.table3<-venn(genelist[3:4])
-print(v.table1)
-print(v.table2)
-print(v.table3)
 
-# vendiagram of DEG of serum Eos abs count and % as predictors, if excluding 0% = Eos%
-deg.tab.serEos<-filter(deg.tab,results=="res6"|results=="res7"|results=="res16"|results=="res17"|results=="res25"|results=="res26")
-deg.tab.serEos$genes%>%table
-genelist<-list(
-  ser_AEC1=filter(deg.tab,results=="res6")%>%select(genes),
-  ser_Eos_p1=filter(deg.tab,results=="res7")%>%select(genes),
-  ser_AEC2=filter(deg.tab,results=="res16")%>%select(genes),
-  ser_Eos_p2=filter(deg.tab,results=="res17")%>%select(genes),
-  ser_AEC.pos=filter(deg.tab,results=="res25")%>%select(genes),
-  ser_Eos_p.pos=filter(deg.tab,results=="res26")%>%select(genes)
-  
-)
-par(mfrow=c(2,2))
-library(gplots)
-v.table1<-venn(genelist[1:4])
-v.table2<-venn(genelist[1:2])
-v.table3<-venn(genelist[3:4])
-v.table4<-venn(genelist[5:6])
-v.table5<-venn(genelist[c(1,3,5)])
-v.table6<-venn(genelist[c(2,4,6)])
-v.table7<-venn(genelist[c(3:6)])
-v.table8<-venn(genelist[c(3,5)])
-v.table9<-venn(genelist[c(4,6)])
-print(v.table1)
-print(v.table2)
-print(v.table3)
-print(v.table4)
-print(v.table5)
-print(v.table6)
-print(v.table7)
-print(v.table8)
-print(v.table9)
-# v.table 4:9 are interesting
+summarize(sig.deg,)
 
-genelist.tab8.9<-list(ser_AEC=attr(v.table8,"intersections")$`ser_AEC2:ser_AEC.pos`,
-                      ser_Eos_p=attr(v.table9,"intersections")$`ser_Eos_p2:ser_Eos_p.pos`)
-unlist(genelist.tab8.9)%>%as.vector()%>%write.csv(file.path(getwd(),"output/serEos_AEC_perc_gene_list.csv"))
+print(list(paste("number of predictors =",length(pred)),
+           paste("predictors:", paste(pred,collapse=", ")))
+      )
+
+# significant DEG subset by predictor (BAL, serum, Eos, Neut)
+deg.bn<-sig.deg%>%filter(fluid_cell==pred[1])
+deg.bw<-sig.deg%>%filter(fluid_cell==pred[2])
+deg.se<-sig.deg%>%filter(fluid_cell==pred[3])
+deg.sn<-sig.deg%>%filter(fluid_cell==pred[4])
+deg.be<-sig.deg%>%filter(fluid_cell==pred[5])
+
+# make list of data for venndiagram of DEG 
+bn.gl<-ungroup(deg.bn)%>%as.data.frame()%>%split(deg.bn$results)%>%lapply(function(d)select(d,genes)) #for BAL Neut
+bw.gl<-ungroup(deg.bw)%>%as.data.frame()%>%split(deg.bw$results)%>%lapply(function(d)select(d,genes)) #for BAL WBC
+se.gl<-ungroup(deg.se)%>%as.data.frame()%>%split(deg.se$results)%>%lapply(function(d)select(d,genes)) #for ser Eos
+sn.gl<-ungroup(deg.sn)%>%as.data.frame()%>%split(deg.sn$results)%>%lapply(function(d)select(d,genes)) #for ser Neut
+be.gl<-ungroup(deg.be)%>%as.data.frame()%>%split(deg.be$results)%>%lapply(function(d)select(d,genes)) #for BAL Eos
+
+# make venndiagram
+bn.v<-bn.gl[2:5]%>%venn
+bw.v<-bw.gl%>%venn
+se.v<-se.gl[c(1,2,5,6)]%>%venn
+sn.v<-sn.gl[1:4]%>%venn
+be.v<-be.gl%>%venn
+attr(bn.v,"intersections")
+deg.bn%>%summarise()%>%print #> count data used were when BAL Neut>0
+
+# venndiagram of DEG for BAL Neut
+bn.gl<-ungroup(deg.bn)%>%as.data.frame()%>%split(deg.bn$results)%>%lapply(function(d)select(d,genes))
+bn.v<-bn.gl[2:5]%>%venn
+attr(bn.v,"intersections")
+attr(bw.v,"intersections")
+attr(se.v,"intersections")
+deg.bn%>%summarise()%>%print #> count data used were when BAL Neut>0
+deg.bw%>%summarise()%>%print #> count data used were when BAL Neut>0
+deg.se%>%summarise()%>%print #> count data used were when BAL Neut>0
+deg.sn%>%summarise()%>%print #> count data used were when BAL Neut>0
