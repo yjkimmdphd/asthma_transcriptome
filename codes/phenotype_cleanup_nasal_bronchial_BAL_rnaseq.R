@@ -37,9 +37,9 @@ counts.b5<-read.delim(file.b5[1])
 counds.b5ID<-colnames(counts.b5)
 
 
-############################################
+######################
 ## load phenotype data
-############################################
+######################
 
 # asthma biomarker phenotype file, nasal, saved in  'phenotype'
 filename2<-file.path(getwd(),"input/asthma-phenotype-filtered.csv")
@@ -216,7 +216,7 @@ table(rowSums(x==0)==45)
 # about 4% of the genes have 0 counts across all samples 
 
 # setting a lcpm cutoff for filtering genes with very low counts
-lcpm.cutoff <- log2(10/M + 2/L)
+lcpm.cutoff <- log2(10/M + 2/L) # M is median. L is mean. library size
 dropCutoff<-function(cutoff){
   which(apply(lcpm.x3, 1, max) < cutoff)
 }

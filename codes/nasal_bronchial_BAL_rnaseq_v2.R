@@ -11,6 +11,12 @@ library(gplots)
 # load phenotype data by sourcing the following code 
 source("./codes/phenotype_cleanup_nasal_bronchial_BAL_rnaseq.R")
 
+# print dims of count data
+print(list("unfiltered countdata",`dim table`=dim(x)))
+print(list("filtered countdata",`dim table`=dim(x2)))
+write.csv(
+  list("unfiltered countdata",`dim table`=dim(x),"filtered countdata",`dim table`=dim(x2)),file.path(getwd(),"output",paste0("count_data_dims",Sys.Date(),".csv")),row.names=FALSE)
+
 ##############
 #MDS by groups
 ##############
@@ -84,10 +90,11 @@ print(df.deseq2input)
 
 input<-df.deseq2input
 z.counts<-c("zero.BALEosnonZero","zero.BALNeutnonZero","zero.serEosnonZero")
-z.input<-data.frame(count.data=input[c(11,13,16),"count.data"],
-                    col.data=input[c(11,13,16),"col.data"],
-                    design = paste0("~ ",z.counts," + Batch"),
-                    resoutput = z.counts)
+z.input<-data.frame(count.data=c("x","x.BalNeut","x.SerCt" ,
+                                 "x2","x2.BalNeut","x2.SerCt" ),
+                    col.data=rep(c("p.counts","p.count.BalNeut", "p.count.SerCt"),2),
+                    design = paste0("~ ",z.counts," + Batch")%>%rep(2),
+                    resoutput = z.counts%>%rep(2))
 df.deseq2input<-rbind(input,z.input)
 print(df.deseq2input)
 
@@ -111,6 +118,7 @@ print(res.table)
 #######################################
 
 #### define function deseq2DEG 
+# saves DEG results as a list consisting of the results and significant DEG results
 deseq2DEG<-function(countdata,coldata,design,resultname){
   dds<-DESeqDataSetFromMatrix(countData = get(countdata),colData=get(coldata), design=as.formula(design))
   dds<-DESeq(dds)
@@ -121,88 +129,18 @@ deseq2DEG<-function(countdata,coldata,design,resultname){
   return(list(res,res.sig))
 }
 
-zero.var<-grep("zero",res.table$fluid_cell)
+
 cont.var<-grep("zero",res.table$fluid_cell, invert=TRUE)
 
 for(i in cont.var){
   assign(paste0("res",i),deseq2DEG(df.deseq2input[i,1],df.deseq2input[i,2],df.deseq2input[i,3],df.deseq2input[i,4]))
 }
 
-# summarize number of significant genes in the 'res.table'
-for(i in cont.var){
-  res.table[i,"sig.genes"]<-get(paste0("res",i))[[2]]%>%nrow
-  res.table[i,"results"]<-paste0("res",i)
-}
-print(res.table)
-
-
-# write results
-
-for(i in cont.var){
-  a<-get(paste0("res",i))
-  write.csv(a[[1]],row.names=TRUE,file.path(getwd(),"output",paste0("DEG_","res",i,"_",res.table[i,"fluid_cell"],"_",Sys.Date(),".csv")))
-  res.table[i,"output"]<-paste0("DEG_","res",i,"_",res.table[i,"fluid_cell"],"_",Sys.Date(),".csv")
-}
-
-
-
-print(res.table)
-
-write.csv(res.table,file.path(getwd(),"output",paste0("res.table_",Sys.Date(),".csv")))
-##############################
-# make list of significant DEG 
-##############################
-
-res.list=c(paste0("res",cont.var))
-gl<-numeric()
-for(i in cont.var){
-  gl[i]<-get(res.list[i])[[2]]%>%nrow
-}
-gl[which(gl==0)]<-1
-
-deg.tab<-data.frame(results=rep(res.list,times=gl))
-gn<-sapply(res.list,function(d){
-  a<-get(d);b<-a[[2]]%>%rownames();
-  b<-unlist(b)%>%as.vector();
-  return(b)})
-gFC<-sapply(res.list,function(d){
-  a<-get(d);
-  b<-a[[2]]$log2FoldChange;
-  b<-unlist(b)%>%as.vector();
-  return(b)})
-gpadj<-sapply(res.list,function(d){
-  a<-get(d);
-  b<-a[[2]]$padj;
-  b<-unlist(b)%>%as.vector();
-  return(b)})
-gnl<-which(lapply(gn,length)==0)
-gn[gnl]<-"none"
-gFC[gnl]<-NA
-gpadj[gnl]<-NA
-deg.tab$genes<-unlist(gn)%>%as.vector
-deg.tab$log2FC<-unlist(gFC)%>%as.vector
-deg.tab$padj<-unlist(gpadj)%>%as.vector
-
-table(deg.tab$genes)%>%as.data.frame()%>%arrange(desc(Freq))
-
-# save DEG table
-write.csv(deg.tab,file.path(getwd(),"output",paste0("DEG_table_",Sys.Date(),".csv")))
-
-
-#Make a basic volcano plot
- 
-#with(res4, plot(log2FoldChange, -log10(pvalue), pch=20, main="Volcano plot", xlim=c(-3,3)))
-
-# Add colored points: blue if padj<0.01, red if log2FC>1 and padj<0.05)
-#with(subset(res4, padj<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="green"))
-#with(subset(res4, padj<.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(pvalue), pch=20, col="red"))
-
 ########################################################
 # DEG comparing zero vs nonZero Eos/Neut in BAL or serum
 ########################################################
-
 #### define function deseq2DE.disc for ananlysis using model matrix containing discrete variable
-
+# saves DEG results as a list consisting of the results and significant DEG results
 deseq2DEG.disc<-function(countdata,coldata,des,resultname){
   dds<-DESeqDataSetFromMatrix(countData = get(countdata),colData=get(coldata), design=des)
   dds<-DESeq(dds)
@@ -212,20 +150,87 @@ deseq2DEG.disc<-function(countdata,coldata,des,resultname){
   res.sig<-res[which(res$padj<0.05),]
   return(list(res,res.sig))
 }
-####################################
-# run the DEG on discrete predictors 
-####################################
-# DEG
+
+### run the DEG on discrete predictors 
 
 # make model
 ml<-list(zeroBalEos=model.matrix(~ zero.BALEos + Batch, p.counts),
          zero.BALNeut=model.matrix(~ zero.BALNeut + Batch, p.counts),
-         zero.serEos=model.matrix(~ zero.serEos + Batch, p.counts),
-         zero.serNeut=model.matrix(~ zero.serNeut + Batch, p.counts))
+         zero.serEos=model.matrix(~ zero.serEos + Batch, p.counts))
+
+zero.var<-grep("zero",res.table$fluid_cell)
+
 
 for(i in zero.var){
   assign(paste0("res",i),deseq2DEG.disc(df.deseq2input[i,1],df.deseq2input[i,2],ml[[i-length(cont.var)]],df.deseq2input[i,4]))
 }
+##########################################################
+# summarize number of significant genes in the 'res.table'
+##########################################################
+for(i in c(cont.var,zero.var)){
+  res.table[i,"sig.genes"]<-get(paste0("res",i))[[2]]%>%nrow
+  res.table[i,"results"]<-paste0("res",i)
+}
+print(res.table)
+
+
+# write results
+
+for(i in c(cont.var,zero.var)){
+  a<-get(paste0("res",i))
+  write.csv(a[[1]],row.names=TRUE,file.path(getwd(),"output",paste0("DEG_","res",i,"_",res.table[i,"fluid_cell"],"_",Sys.Date(),".csv")))
+  res.table[i,"output"]<-paste0("DEG_","res",i,"_",res.table[i,"fluid_cell"],"_",Sys.Date(),".csv")
+}
+
+
+print(res.table)
+
+write.csv(res.table,file.path(getwd(),"output",paste0("res.table_",Sys.Date(),".csv")))
+##############################
+# make list of significant DEG 
+##############################
+
+if(file.exists(file.path(getwd(),"output",paste0("res.table_",Sys.Date(),".csv")))){
+  fp<-file.path(getwd(),"output",paste0("res.table_",Sys.Date(),".csv"))
+  flist<-list.files(fp)[1:36]
+  fl<-sapply(flist,function(d)str_split(d,"DEG_res"))%>%unlist%>%matrix(ncol=2, byrow=TRUE)
+  fl<-fl[,2]%>%str_split("_")%>%unlist%>%matrix(ncol=4,byrow=TRUE)
+  fl<-fl[,1]%>%as.numeric%>%na.omit%>%as.numeric
+  for(i in fl){
+    assign(paste0("res",i),read.csv(file.path(fp,flist[i]))%>%mutate(results=paste0("res",i))%>%rename(X="genes"))
+    
+    
+  }
+  # summarize number of significant genes in the 'res.table'
+  cont.var<-grep("zero",res.table$fluid_cell, invert=TRUE)
+  for(i in cont.var){
+    res.table[i,"sig.genes"]<-get(paste0("res",i))%>%filter(padj<0.05)%>%nrow
+    res.table[i,"results"]<-paste0("res",i)
+  }
+  print(res.table)
+  
+  # write sig.table csv
+  write.csv(res.table,file.path(getwd(),"output",paste0("res.table_",Sys.Date(),".csv")),row.names = FALSE)
+  ##############################
+  # make list of significant DEG 
+  ##############################
+  
+  dt<-rbindlist((lapply(res.list,get)))
+  sig.deg<-dt%>%filter(padj<0.05)%>%group_by(results)
+  write.csv(
+    sig.deg,file.path(getwd(),"output",paste0("sig_deg_",Sys.Date(),".csv")),row.names=FALSE
+  )
+}
+
+#Make a basic volcano plot
+ 
+#with(res4, plot(log2FoldChange, -log10(pvalue), pch=20, main="Volcano plot", xlim=c(-3,3)))
+
+# Add colored points: blue if padj<0.01, red if log2FC>1 and padj<0.05)
+#with(subset(res4, padj<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="green"))
+#with(subset(res4, padj<.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(pvalue), pch=20, col="red"))
+
+
 
 # update the 'res.table' which summarize number of significant genes
 fluid.cell.sample<-sapply(df.deseq2input$resoutput,function(d){substring(d,1,7)})
@@ -253,37 +258,6 @@ print(res.table)
 
 ######
 ## write DEG table
-
-res.list=c(paste0("res",1:nrow(res.table)))
-gl<-numeric()
-for(i in 1:nrow(res.table)){
-  gl[i]<-get(res.list[i])[[2]]%>%nrow
-}
-gl[which(gl==0)]<-1
-
-deg.tab<-data.frame(results=rep(res.list,times=gl))
-gn<-sapply(res.list,function(d){
-  a<-get(d);b<-a[[2]]%>%rownames();
-  b<-unlist(b)%>%as.vector();
-  return(b)})
-gFC<-sapply(res.list,function(d){
-  a<-get(d);
-  b<-a[[2]]$log2FoldChange;
-  b<-unlist(b)%>%as.vector();
-  return(b)})
-gpadj<-sapply(res.list,function(d){
-  a<-get(d);
-  b<-a[[2]]$padj;
-  b<-unlist(b)%>%as.vector();
-  return(b)})
-gnl<-which(lapply(gn,length)==0)
-gn[gnl]<-"none"
-gFC[gnl]<-NA
-gpadj[gnl]<-NA
-deg.tab$genes<-unlist(gn)%>%as.vector
-deg.tab$log2FC<-unlist(gFC)%>%as.vector
-deg.tab$padj<-unlist(gpadj)%>%as.vector
-
 table(deg.tab$genes)%>%as.data.frame()%>%arrange(desc(Freq))
 
 # save results as CSV files

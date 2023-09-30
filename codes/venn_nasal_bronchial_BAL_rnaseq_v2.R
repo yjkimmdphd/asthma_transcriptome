@@ -31,9 +31,25 @@ sn.gl<-ungroup(deg.sn)%>%as.data.frame()%>%split(deg.sn$results)%>%lapply(functi
 be.gl<-ungroup(deg.be)%>%as.data.frame()%>%split(deg.be$results)%>%lapply(function(d)select(d,genes)) #for BAL Eos
 
 # make venndiagram
-bn.v<-bn.gl[2:5]%>%venn
+customVenn<-function(res,genelist){
+  #res is a character vector of results that you want to make VD with
+  a<-genelist
+  r<-res
+  res.names<-sapply(r,
+                    function(d)filter(res.table,results==d)%>%
+                      select(count_data)%>%
+                      unlist%>%as.vector)
+  venn(a[r],names=res.names,simplify=TRUE)
+}
+
+bn.v.all.bn<-customVenn(c("res4","res14"),bn.gl)
+bn.v.pos.bn<-customVenn(c("res23","res24","res31","res32"),bn.gl)
 bw.v<-bw.gl%>%venn
-se.v<-se.gl[c(1,2,5,6)]%>%venn
+se.v.all.se<-customVenn(c("res6","res7","res16","res17"),se.gl)
+se.v.pos.se<-customVenn(c("res25","res26","res33","res34"),se.gl)
+se.v.pos.lowR.se<-customVenn(c("res16","res17","res33","res34"),se.gl) # 
+sn.
+
 sn.v<-sn.gl[1:4]%>%venn
 be.v<-be.gl%>%venn
 attr(bn.v,"intersections")
