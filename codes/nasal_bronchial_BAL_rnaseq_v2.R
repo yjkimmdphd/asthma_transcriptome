@@ -137,8 +137,6 @@ for(i in cont.var){
   assign(paste0("res",i),deseq2DEG(df.deseq2input[i,1],df.deseq2input[i,2],df.deseq2input[i,3],df.deseq2input[i,4]))
 }
 
-
-
 ########################################################
 # DEG comparing zero vs nonZero Eos/Neut in BAL or serum
 ########################################################
@@ -159,6 +157,9 @@ deseq2DEG.disc<-function(countdata,coldata,des,resultname){
 
 # make model
 ml<-list(zeroBalEos=model.matrix(~ zero.BALEos + Batch, p.counts),
+         zero.BALNeut=model.matrix(~ zero.BALNeut + Batch, p.counts),
+         zero.serEos=model.matrix(~ zero.serEos + Batch, p.counts),
+         zeroBalEos=model.matrix(~ zero.BALEos + Batch, p.counts),
          zero.BALNeut=model.matrix(~ zero.BALNeut + Batch, p.counts),
          zero.serEos=model.matrix(~ zero.serEos + Batch, p.counts))
 
