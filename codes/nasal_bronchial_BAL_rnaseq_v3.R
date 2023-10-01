@@ -9,7 +9,7 @@ library(edgeR)
 library(gplots)
 
 # load phenotype data by sourcing the following code 
-source("./codes/phenotype_cleanup_nasal_bronchial_BAL_rnaseq.R")
+source("./codes/phenotype_cleanup_nasal_bronchial_BAL_rnaseq_v2.R")
 
 # print dims of count data
 print(list("unfiltered countdata",`dim table`=dim(x)))
@@ -22,7 +22,7 @@ write.csv(
 ##############
 
 # color coding based on each factor levels of sex, age, BAL Eos%, and batch sourced from the following code:
-source("./codes/mds_color_code_nasal_bronchial_BAL_rnaseq_v2.R")
+source("./codes/mds_color_code_nasal_bronchial_BAL_rnaseq.R")
 
 # plot the MDS
 pdf(file= file.path(getwd(),"output/mds_eos_batch_age_race.pdf" ))
