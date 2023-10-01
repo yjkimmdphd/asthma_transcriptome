@@ -6,8 +6,9 @@ library(tidyverse)
 # if individual DEG tables of each DEG results are available,
 # read them and save them as individual data.frame 
 # then summarize the results in res.table
-if(file.exists(file.path(getwd(),"output/DEG_2023-09-26"))){
-  flist<-list.files(fp)[1:36]
+fp<-file.path(getwd(),"output/DEG_2023-09-30")
+if(file.exists(fp)){
+  flist<-list.files(fp)[1:39]
   fl<-sapply(flist,function(d)str_split(d,"DEG_res"))%>%unlist%>%matrix(ncol=2, byrow=TRUE)
   fl<-fl[,2]%>%str_split("_")%>%unlist%>%matrix(ncol=4,byrow=TRUE)
   fl<-fl[,1]%>%as.numeric%>%na.omit%>%as.numeric
@@ -18,7 +19,9 @@ if(file.exists(file.path(getwd(),"output/DEG_2023-09-26"))){
   }
   # summarize number of significant genes in the 'res.table'
   cont.var<-grep("zero",res.table$fluid_cell, invert=TRUE)
-  for(i in cont.var){
+  zero.var<-grep("zero",res.table$fluid_cell)
+  
+  for(i in c(cont.var,zero.var)){
     res.table[i,"sig.genes"]<-get(paste0("res",i))%>%filter(padj<0.05)%>%nrow
     res.table[i,"results"]<-paste0("res",i)
   }
@@ -29,7 +32,7 @@ if(file.exists(file.path(getwd(),"output/DEG_2023-09-26"))){
   ##############################
   # make list of significant DEG 
   ##############################
-  
+  res.list=c(paste0("res",c(cont.var)))
   dt<-rbindlist((lapply(res.list,get)))
   sig.deg<-dt%>%filter(padj<0.05)%>%group_by(results)
   write.csv(

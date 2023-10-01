@@ -120,6 +120,7 @@ print(res.table)
 #### define function deseq2DEG 
 # saves DEG results as a list consisting of the results and significant DEG results
 deseq2DEG<-function(countdata,coldata,design,resultname){
+  print(resultname)
   dds<-DESeqDataSetFromMatrix(countData = get(countdata),colData=get(coldata), design=as.formula(design))
   dds<-DESeq(dds)
   res<-results(dds, name=resultname)
@@ -142,6 +143,7 @@ for(i in cont.var){
 #### define function deseq2DE.disc for ananlysis using model matrix containing discrete variable
 # saves DEG results as a list consisting of the results and significant DEG results
 deseq2DEG.disc<-function(countdata,coldata,des,resultname){
+  print(resultname)
   dds<-DESeqDataSetFromMatrix(countData = get(countdata),colData=get(coldata), design=des)
   dds<-DESeq(dds)
   res<-results(dds, name=resultname)
@@ -164,6 +166,11 @@ zero.var<-grep("zero",res.table$fluid_cell)
 for(i in zero.var){
   assign(paste0("res",i),deseq2DEG.disc(df.deseq2input[i,1],df.deseq2input[i,2],ml[[i-length(cont.var)]],df.deseq2input[i,4]))
 }
+
+for(i in zero.var[1]){
+  assign(paste0("res",i),deseq2DEG.disc(df.deseq2input[i,1],df.deseq2input[i,2],ml[[i-length(cont.var)]],df.deseq2input[i,4]))
+}
+
 ##########################################################
 # summarize number of significant genes in the 'res.table'
 ##########################################################
@@ -182,45 +189,10 @@ for(i in c(cont.var,zero.var)){
   res.table[i,"output"]<-paste0("DEG_","res",i,"_",res.table[i,"fluid_cell"],"_",Sys.Date(),".csv")
 }
 
-
 print(res.table)
 
 write.csv(res.table,file.path(getwd(),"output",paste0("res.table_",Sys.Date(),".csv")))
-##############################
-# make list of significant DEG 
-##############################
 
-if(file.exists(file.path(getwd(),"output",paste0("res.table_",Sys.Date(),".csv")))){
-  fp<-file.path(getwd(),"output",paste0("res.table_",Sys.Date(),".csv"))
-  flist<-list.files(fp)[1:36]
-  fl<-sapply(flist,function(d)str_split(d,"DEG_res"))%>%unlist%>%matrix(ncol=2, byrow=TRUE)
-  fl<-fl[,2]%>%str_split("_")%>%unlist%>%matrix(ncol=4,byrow=TRUE)
-  fl<-fl[,1]%>%as.numeric%>%na.omit%>%as.numeric
-  for(i in fl){
-    assign(paste0("res",i),read.csv(file.path(fp,flist[i]))%>%mutate(results=paste0("res",i))%>%rename(X="genes"))
-    
-    
-  }
-  # summarize number of significant genes in the 'res.table'
-  cont.var<-grep("zero",res.table$fluid_cell, invert=TRUE)
-  for(i in cont.var){
-    res.table[i,"sig.genes"]<-get(paste0("res",i))%>%filter(padj<0.05)%>%nrow
-    res.table[i,"results"]<-paste0("res",i)
-  }
-  print(res.table)
-  
-  # write sig.table csv
-  write.csv(res.table,file.path(getwd(),"output",paste0("res.table_",Sys.Date(),".csv")),row.names = FALSE)
-  ##############################
-  # make list of significant DEG 
-  ##############################
-  
-  dt<-rbindlist((lapply(res.list,get)))
-  sig.deg<-dt%>%filter(padj<0.05)%>%group_by(results)
-  write.csv(
-    sig.deg,file.path(getwd(),"output",paste0("sig_deg_",Sys.Date(),".csv")),row.names=FALSE
-  )
-}
 
 #Make a basic volcano plot
  
@@ -229,31 +201,6 @@ if(file.exists(file.path(getwd(),"output",paste0("res.table_",Sys.Date(),".csv")
 # Add colored points: blue if padj<0.01, red if log2FC>1 and padj<0.05)
 #with(subset(res4, padj<.05 ), points(log2FoldChange, -log10(pvalue), pch=20, col="green"))
 #with(subset(res4, padj<.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(pvalue), pch=20, col="red"))
-
-
-
-# update the 'res.table' which summarize number of significant genes
-fluid.cell.sample<-sapply(df.deseq2input$resoutput,function(d){substring(d,1,7)})
-perc<-grep("perc",df.deseq2input$resoutput)
-fcp<-data.frame(fluid.cell=fluid.cell.sample)
-fcp[perc,"unit"]<-"%"
-fcp[-perc,"unit"]<-"abs count"
-res.table<-data.frame(software="DESEq2",
-                      fluid_cell=fcp[,1],
-                      units=fcp[,2],
-                      model=df.deseq2input$design,
-                      sig.genes=0,
-                      count_data=df.deseq2input$count.data)
-res.table$fluid_cell[zero.var]<-c("BAL_Eos","BAL_neut","serum_E")
-res.table$units[zero.var]<-c("0 vs >0")
-
-print(res.table)
-
-for(i in zero.var){
-  res.table[i,"sig.genes"]<-get(paste0("res",i))[[2]]%>%nrow
-  res.table[i,"results"]<-paste0("res",i)
-}
-print(res.table)
 
 
 ######
