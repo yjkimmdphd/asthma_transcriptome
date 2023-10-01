@@ -137,6 +137,8 @@ for(i in cont.var){
   assign(paste0("res",i),deseq2DEG(df.deseq2input[i,1],df.deseq2input[i,2],df.deseq2input[i,3],df.deseq2input[i,4]))
 }
 
+
+
 ########################################################
 # DEG comparing zero vs nonZero Eos/Neut in BAL or serum
 ########################################################
@@ -164,10 +166,6 @@ zero.var<-grep("zero",res.table$fluid_cell)
 
 
 for(i in zero.var){
-  assign(paste0("res",i),deseq2DEG.disc(df.deseq2input[i,1],df.deseq2input[i,2],ml[[i-length(cont.var)]],df.deseq2input[i,4]))
-}
-
-for(i in zero.var[1]){
   assign(paste0("res",i),deseq2DEG.disc(df.deseq2input[i,1],df.deseq2input[i,2],ml[[i-length(cont.var)]],df.deseq2input[i,4]))
 }
 
