@@ -64,6 +64,7 @@ p.counts.var<-
   colnames(p.counts)[grep("log",colnames(p.counts))]
 
 ##### make dataframe of input values that will be used for DEG with DESeq2
+print("make dataframe of input values that will be used for DEG with DESeq2")
 # save as 'df.deseq2input'
 # x is original count table
 # x2 is x filtered for low gene counts
@@ -132,8 +133,9 @@ deseq2DEG<-function(countdata,coldata,design,resultname){
 
 
 cont.var<-grep("zero",res.table$fluid_cell, invert=TRUE)
-
+print(cont.var)
 for(i in cont.var){
+  print(df.deseq2input[i,4])
   assign(paste0("res",i),deseq2DEG(df.deseq2input[i,1],df.deseq2input[i,2],df.deseq2input[i,3],df.deseq2input[i,4]))
 }
 
@@ -164,9 +166,10 @@ ml<-list(zeroBalEos=model.matrix(~ zero.BALEos + Batch, p.counts),
          zero.serEos=model.matrix(~ zero.serEos + Batch, p.counts))
 
 zero.var<-grep("zero",res.table$fluid_cell)
-
+print(zero.var)
 
 for(i in zero.var){
+  print(df.deseq2input[i,4])
   assign(paste0("res",i),deseq2DEG.disc(df.deseq2input[i,1],df.deseq2input[i,2],ml[[i-length(cont.var)]],df.deseq2input[i,4]))
 }
 
