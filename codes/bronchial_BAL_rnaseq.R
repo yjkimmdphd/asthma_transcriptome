@@ -10,14 +10,14 @@ library(gplots)
 library(DESeq2)
 
 # load phenotype data by sourcing the following code 
-source("./codes/phenotype_cleanup_nasal_bronchial_BAL_rnaseq.R")
+source("./codes/phenotype_cleanup_bronchial_BAL_rnaseq.R")
 
 
 # print dims of count data
 print(list("unfiltered countdata",`dim table`=dim(x)))
 print(list("filtered countdata",`dim table`=dim(x2)))
 write.csv(
-  list("unfiltered countdata",`dim table`=dim(x),"filtered countdata",`dim table`=dim(x2)),file.path(getwd(),"output",paste0("count_data_dims",Sys.Date(),".csv")),row.names=FALSE)
+  list("unfiltered countdata",`dim table`=dim(x),"filtered countdata",`dim table`=dim(x2)),file.path(getwd(),"output",paste0("count_data_dims_bronch_bal_rnaseq",Sys.Date(),".csv")),row.names=FALSE)
 
 
 
@@ -165,7 +165,7 @@ for(i in c(cont.var,zero.var)){
 
 print(res.table)
 
-write.csv(res.table,file.path(getwd(),"output",paste0("res.table_",Sys.Date(),".csv")))
+write.csv(res.table,file.path(getwd(),"output",paste0("res.table_bronch_rnaseq",Sys.Date(),".csv")))
 
 
 #Make a basic volcano plot
@@ -182,8 +182,8 @@ write.csv(res.table,file.path(getwd(),"output",paste0("res.table_",Sys.Date(),".
 table(deg.tab$genes)%>%as.data.frame()%>%arrange(desc(Freq))
 
 # save results as CSV files
-write.csv(deg.tab,file.path(getwd(),"output",paste0("DEG_table_",Sys.Date(),".csv")))
-write.csv(res.table,file.path(getwd(),"output",paste0("res.table_",Sys.Date(),".csv")))
+write.csv(deg.tab,file.path(getwd(),"output",paste0("DEG_table_bronch_rnaseq",Sys.Date(),".csv")))
+write.csv(res.table,file.path(getwd(),"output",paste0("res.table_bronch_rnaseq",Sys.Date(),".csv")))
 for(i in zero.var){
   a<-get(paste0("res",i))
   write.csv(a[[1]],file.path(getwd(),"output",paste0("DEG_","res",i,"_",res.table[i,"fluid_cell"],"_",Sys.Date(),".csv")))
