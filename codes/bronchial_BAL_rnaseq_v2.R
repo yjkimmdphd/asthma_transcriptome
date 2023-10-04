@@ -1,15 +1,16 @@
 ##
-# RNA seq analysis of nasal/bronchial data with edgeR and limma
-# YJK local machine version
+# RNA seq analysis of nasal data with edgeR and limma
+# 
 ## 
 library(dplyr)
 library(limma)
 library(Glimma)
 library(edgeR)
 library(gplots)
+library(DESeq2)
 
 # load phenotype data by sourcing the following code 
-source("./codes/phenotype_cleanup_nasal_BAL_rnaseq_v2.R")
+source("./codes/phenotype_cleanup_nasal_bronchial_BAL_rnaseq.R")
 
 # print dims of count data
 print(list("unfiltered countdata",`dim table`=dim(x)))
@@ -17,46 +18,52 @@ print(list("filtered countdata",`dim table`=dim(x2)))
 write.csv(
   list("unfiltered countdata",`dim table`=dim(x),"filtered countdata",`dim table`=dim(x2)),file.path(getwd(),"output",paste0("count_data_dims",Sys.Date(),".csv")),row.names=FALSE)
 
-##############
-#MDS by groups
-##############
 
-# color coding based on each factor levels of sex, age, BAL Eos%, and batch sourced from the following code:
-source("./codes/mds_color_code_nasal_bronchial_BAL_rnaseq.R")
+################################################################################################
+## subsetting counts table based on the BAL and CBC data availability and gene expression filter
+################################################################################################
+# setting a lcpm cutoff for filtering genes with very low counts
+lcpm.cutoff <- log2(10/M + 2/L) # M is median. L is mean. library size
+dropCutoff<-function(cutoff){
+  which(apply(lcpm.x3, 1, max) < cutoff)
+}
+drop <-dropCutoff(0) 
+drop2<-dropCutoff(lcpm.cutoff)
+dim(x3[-drop,])
+dim(x3[-drop2,])
 
-# plot the MDS
-pdf(file= file.path(getwd(),"output/mds_eos_batch_age_race.pdf" ))
-par(mfrow=c(2,2))
-mds.eos<-plotMDS(lcpm.x3,  col= col$eos, labels=p.counts$BAL_Eos_perc, main="Eos %", plot=FALSE)
-mds.batch<-plotMDS(lcpm.x3,  col= col$batch, labels=p.counts$Batch, main="batch",plot=FALSE)
-mds.age<-plotMDS(lcpm.x3,  col= col$age, labels=p.counts$Age, main = "age", plot=FALSE)
-mds.race<-plotMDS(lcpm.x3,  col= col$race, labels=p.counts$Race_corrected, main = "race",plot=FALSE)
-dev.off()
-# MDS shows significant batch effect
+x.BalNeut<-x[,c( p.count.BalNeut$SampleID)] # count table for DEG using BAL Neut information as predictor
+x.SerCt<-x[,c(p.count.SerCt$SampleID)]# count table for DEG using serum cell counts information as predictor
 
-# checking if covariates have batch effect:
+x2<-x[-drop,] #use gene cut off of lcpm = 0
 
-cov.data<-cbind(Batch=p.counts$Batch,p.counts[,c(3:23)])
-cov.data<-cov.data[,c(1,grep("log",cov.data%>%colnames))]
-vari<-colnames(cov.data[-1])
+x2.BalNeut<-x2[,c( p.count.BalNeut$SampleID)] # count table for DEG using BAL Neut information as predictor
+x2.SerCt<-x2[,c(p.count.SerCt$SampleID)]# count table for DEG using serum cell counts information as predictor
 
-models <- lapply(vari,function(x){y<-as.formula(paste0(x,"~Batch"));return(y)})
-aov.results<-lapply(models,function(x){aov(x,data=cov.data)%>%summary}) #> none of the covariates have a significant batch effect
-capture.output(aov.results,file=file.path(getwd(),"output/cov_aov_assoc.txt")) #> write aov result
+#### filtering phenotype table based on cell counts
+p.BalEos.pos<-p.counts%>%filter(bal_Eos_ct>0)
+p.BalNeut.pos<-p.counts%>%filter(BAL_neut_ct>0)
+p.serEos.pos<-p.counts%>%filter(serum_Eos>0)
+p.serNeut.pos<-p.counts%>%filter(serum_Neut>0)
 
-# make a heat map of each predictor variable, and see if they cluster based on batch
-pdf(file= file.path(getwd(),"output/cov_batch_heatmap.pdf" ))
-par(mfrow=c(1,1))
-batch<-p.counts$Batch%>%as.character
-hm.matrix<-as.matrix(cov.data[,-1], dimnames=list(batch,vari))
-rownames(hm.matrix)<-batch
-hm.matrix%>%replace(is.na(.),-1)%>%heatmap.2(srtCol = 25,adjCol = c(0.95,-0.5)) #> shows heatmap
-dev.off()
+#### make new count tables with sampleID filtered for cell counts
+x.BalEos.pos<-x[,p.BalEos.pos$SampleID]
+x.BalNeut.pos<-x[,p.BalNeut.pos$SampleID]
+x.serEos.pos<-x[,p.serEos.pos$SampleID]
+x.serNeut.pos<-x[,p.serNeut.pos$SampleID]
+
+x2.BalEos.pos<-x2[,p.BalEos.pos$SampleID]
+x2.BalNeut.pos<-x2[,p.BalNeut.pos$SampleID]
+x2.serEos.pos<-x2[,p.serEos.pos$SampleID]
+x2.serNeut.pos<-x2[,p.serNeut.pos$SampleID]
+
+
+
 
 ##########################################
 # make input dataframe for DEG with DESeq2
 ##########################################
-library(DESeq2)
+
 
 #### find which are going to be predictor variables for gene expressions, i.e., names of the log transformed cell counts
 # save as 'p.counts.var'
@@ -81,8 +88,8 @@ print(df.deseq2input)
 
 # update 'df.deseq2input'
 input.pos<-data.frame(count.data=rep(c("x.BalEos.pos", "x.BalNeut.pos", "x.serEos.pos", "x.serNeut.pos",
-                            "x2.BalEos.pos","x2.BalNeut.pos","x2.serEos.pos","x2.serNeut.pos"),
-                          each=2))
+                                       "x2.BalEos.pos","x2.BalNeut.pos","x2.serEos.pos","x2.serNeut.pos"),
+                                     each=2))
 input.pos$col.data<-rep(rep(c("p.BalEos.pos","p.BalNeut.pos","p.serEos.pos","p.serNeut.pos"),each=2),2)
 input.pos$design<-rep((df.deseq2input[c(1:4,6:9),"design"]),2)
 input.pos$resoutput<-rep((df.deseq2input[c(1:4,6:9),"resoutput"]),2)
@@ -97,6 +104,7 @@ z.input<-data.frame(count.data=c("x","x.BalNeut","x.SerCt" ,
                     design = paste0("~ ",z.counts," + Batch")%>%rep(2),
                     resoutput = z.counts%>%rep(2))
 df.deseq2input<-rbind(input,z.input)
+df.deseq2input$sample<-"bronch"
 print(df.deseq2input)
 
 
@@ -111,7 +119,8 @@ res.table<-data.frame(software="DESEq2",
                       units=fcp[,2],
                       model=df.deseq2input$design,
                       sig.genes=0,
-                      count_data=df.deseq2input$count.data)
+                      count_data=df.deseq2input$count.data,
+                      sample="bronch")
 print(res.table)
 
 #######################################
@@ -133,7 +142,9 @@ deseq2DEG<-function(countdata,coldata,design,resultname){
 
 
 cont.var<-grep("zero",res.table$fluid_cell, invert=TRUE)
+
 print(cont.var)
+
 for(i in cont.var){
   print(df.deseq2input[i,4])
   assign(paste0("res",i),deseq2DEG(df.deseq2input[i,1],df.deseq2input[i,2],df.deseq2input[i,3],df.deseq2input[i,4]))
@@ -197,7 +208,7 @@ write.csv(res.table,file.path(getwd(),"output",paste0("res.table_",Sys.Date(),".
 
 
 #Make a basic volcano plot
- 
+
 #with(res4, plot(log2FoldChange, -log10(pvalue), pch=20, main="Volcano plot", xlim=c(-3,3)))
 
 # Add colored points: blue if padj<0.01, red if log2FC>1 and padj<0.05)
@@ -205,3 +216,15 @@ write.csv(res.table,file.path(getwd(),"output",paste0("res.table_",Sys.Date(),".
 #with(subset(res4, padj<.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(pvalue), pch=20, col="red"))
 
 
+######
+## write DEG table
+table(deg.tab$genes)%>%as.data.frame()%>%arrange(desc(Freq))
+
+# save results as CSV files
+write.csv(deg.tab,file.path(getwd(),"output",paste0("DEG_table_",Sys.Date(),".csv")))
+write.csv(res.table,file.path(getwd(),"output",paste0("res.table_",Sys.Date(),".csv")))
+for(i in zero.var){
+  a<-get(paste0("res",i))
+  write.csv(a[[1]],file.path(getwd(),"output",paste0("DEG_","res",i,"_",res.table[i,"fluid_cell"],"_",Sys.Date(),".csv")))
+  res.table[i,"output"]<-paste0("DEG_","res",i,"_",res.table[i,"fluid_cell"],"_",Sys.Date(),".csv")
+}

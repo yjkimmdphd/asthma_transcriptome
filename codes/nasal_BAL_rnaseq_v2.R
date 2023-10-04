@@ -1,5 +1,5 @@
 ##
-# RNA seq analysis of nasal/bronchial data with edgeR and limma
+# RNA seq analysis of nasal data with edgeR and limma
 # YJK local machine version
 ## 
 library(dplyr)
@@ -22,7 +22,7 @@ write.csv(
 ##############
 
 # color coding based on each factor levels of sex, age, BAL Eos%, and batch sourced from the following code:
-source("./codes/mds_color_code_nasal_bronchial_BAL_rnaseq.R")
+source("./codes/mds_color_code_nasal_BAL_rnaseq.R")
 
 # plot the MDS
 pdf(file= file.path(getwd(),"output/mds_eos_batch_age_race.pdf" ))

@@ -1,7 +1,8 @@
 #########################
-# cleaning up patient phenotype data table for nasal_BAL_rnaseq.R
+# cleaning up patient phenotype data table for bronchial_BAL_rnaseq.R
 #########################
-
+library(limma)
+library(edgeR)
 library(dplyr)
 ############################################
 ## set working directory and load count data
@@ -21,7 +22,6 @@ file.b5.pc<-c("C:/Users/kimyo/Dropbox/Research/asthma-allergy-bunyavanich/input/
 # setting directory for count data when working on HPC minerva
 file.minerva<-c("/sc/arion/projects/asthma-allergy/MS_asthma/outputs/batch1234_combined/read_count/batch1234_readcount_matrix_allsamples.afterQC.txt")
 file.b5.minerva<-c("/sc/arion/projects/asthma-allergy/MS_asthma/outputs/batch5/read_count/AsthmaNasal_RNAseq.batch5.geneID_readcount_rmscaffold_highqualitysamples.txt")
-
 
 
 # reading count data for batch1,2,3,4 and saving as 'counts'
@@ -94,20 +94,22 @@ colnames(phenotype.counts)[1]<-"SampleID"
 #######################################################################
 ## find subject assignment ID with nasal and bronchial cell RNAseq data  
 #######################################################################
-nasal.ID<-phenotype[,"subject_assgn"] # nasal study ID that have been collected
-bronch.ID<-sub("N","B",nasal.ID) # bronchial subject ID 
-nb.ID<-c(nasal.ID,bronch.ID) # nasal and bronchial subject ID
-a<-counts.ID%in%nb.ID  
-nb.exist.ID<-counts.ID[a] # subject ID nasal and bronchial samples that are in the count matrix
+nasal.ID<-phenotype[,"subject_assgn"] # The three digit number is subject ID. N*** indicates nasal sample ID
+bronch.ID<-sub("N","B",nasal.ID) # B*** indicates bronchial sample ID, sequence data is not available for all as of 2023-10-04
+phenotype.counts[,"SampleID"]<-bronch.ID # reassign subject sample ID in the phenotype table
+nb.ID<-c(nasal.ID,bronch.ID) # nasal and bronchial sample ID
+a<-counts.ID%in%nb.ID  # find which sample ID has phenotype data associated with it
+nb.exist.ID<-counts.ID[a] # sample ID in the count matrix that has associated phenotype data
 
 # subset 'phenotype.counts' for which RNA counts data exist to 'p.counts'
-sample.ID<-counts.ID[counts.ID%in%nasal.ID]
-p.counts<-phenotype.counts[nasal.ID%in%sample.ID,]
+sample.ID<-counts.ID[counts.ID%in%bronch.ID]
+p.counts<-phenotype.counts[bronch.ID%in%sample.ID,]
+dim(p.counts)
 
 # subset batch info filtered based on nb.exist.ID.
 batch.info.ID<-which(batch.info$SampleID%in%nb.exist.ID)
 batch.info.BAL<-batch.info[batch.info.ID,]
-(batch.info.BAL$Type=="Nasal")%>%table
+table(batch.info.BAL$Type) # confirm there are 47 bronchial sample batch information with associated rnaseq data
 
 # left join batch info with 'p.counts'
 p.counts<-left_join(p.counts,batch.info.BAL, by="SampleID")
@@ -177,7 +179,7 @@ print(p.counts%>%select(SampleID,BAL_CBC_delay)%>%arrange(desc(BAL_CBC_delay)))
 ###########################################
 
 # select just the nasal RNAseq counts
-b<-counts.ID%in%nasal.ID
+b<-counts.ID%in%bronch.ID
 x<-counts[,b]
 genes<-counts$SampleID
 rownames(x)<-genes
@@ -209,40 +211,4 @@ lcpm.x3<-cpm(x3,log=TRUE)
 table(rowSums(x==0)==45)
 # about 4% of the genes have 0 counts across all samples 
 
-# setting a lcpm cutoff for filtering genes with very low counts
-lcpm.cutoff <- log2(10/M + 2/L) # M is median. L is mean. library size
-dropCutoff<-function(cutoff){
-  which(apply(lcpm.x3, 1, max) < cutoff)
-}
-drop <-dropCutoff(0) 
-drop2<-dropCutoff(lcpm.cutoff)
-dim(x3[-drop,])
-dim(x3[-drop2,])
 
-################################################################################################
-## subsetting counts table based on the BAL and CBC data availability and gene expression filter
-################################################################################################
-x.BalNeut<-x[,c( p.count.BalNeut$SampleID)] # count table for DEG using BAL Neut information as predictor
-x.SerCt<-x[,c(p.count.SerCt$SampleID)]# count table for DEG using serum cell counts information as predictor
-
-x2<-x[-drop2,]
-
-x2.BalNeut<-x2[,c( p.count.BalNeut$SampleID)] # count table for DEG using BAL Neut information as predictor
-x2.SerCt<-x2[,c(p.count.SerCt$SampleID)]# count table for DEG using serum cell counts information as predictor
-
-#### filtering phenotype table based on cell counts
-p.BalEos.pos<-p.counts%>%filter(bal_Eos_ct>0)
-p.BalNeut.pos<-p.counts%>%filter(BAL_neut_ct>0)
-p.serEos.pos<-p.counts%>%filter(serum_Eos>0)
-p.serNeut.pos<-p.counts%>%filter(serum_Neut>0)
-
-#### make new count tables with sampleID filtered for cell counts
-x.BalEos.pos<-x[,p.BalEos.pos$SampleID]
-x.BalNeut.pos<-x[,p.BalNeut.pos$SampleID]
-x.serEos.pos<-x[,p.serEos.pos$SampleID]
-x.serNeut.pos<-x[,p.serNeut.pos$SampleID]
-
-x2.BalEos.pos<-x2[,p.BalEos.pos$SampleID]
-x2.BalNeut.pos<-x2[,p.BalNeut.pos$SampleID]
-x2.serEos.pos<-x2[,p.serEos.pos$SampleID]
-x2.serNeut.pos<-x2[,p.serNeut.pos$SampleID]

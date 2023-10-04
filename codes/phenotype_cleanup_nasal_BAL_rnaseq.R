@@ -1,7 +1,8 @@
 #########################
-# cleaning up patient phenotype data table for nasal_bronchial_BAL_rnaseq.R
+# cleaning up patient phenotype data table for nasal_BAL_rnaseq.R
 #########################
-
+library(limma)
+library(edgeR)
 library(dplyr)
 ############################################
 ## set working directory and load count data
@@ -42,7 +43,7 @@ counds.b5ID<-colnames(counts.b5)
 ######################
 
 # asthma biomarker phenotype file, nasal, saved in  'phenotype'
-filename2<-file.path(getwd(),"input/asthma-phenotype-filtered.csv")
+filename2<-file.path(getwd(),"input/asthma-phenotype-filtered-revised-2023-10-04.csv")
 file.exists(filename2)
 phenotype<-read.csv(filename2)
 
@@ -59,12 +60,6 @@ batch.info<-read.delim(filename3)
 phenotype<-phenotype%>%mutate(
   bal_Eos_ct=BAL_Eos_perc*0.01*BAL_WBC,
   BAL_neut_ct=BAL_neut_perc*0.01*BAL_WBC)
-
-
-# Subject 279's serum Eos % was NA while serum WBC and serum Eos absolute counts were available. A code is to calculate the  missing serum Eos % for subject 279.  
-r.279<-which(phenotype$Study.ID=="279")
-p.279<-phenotype%>%filter(Study.ID=="279")%>%mutate(serum_Eos_perc=round(serum_Eos/serum_WBC,4)*100)
-phenotype[r.279,]<-p.279
 
 # log transform serum and BAL cell counts
 phenotype<-mutate(phenotype, 
