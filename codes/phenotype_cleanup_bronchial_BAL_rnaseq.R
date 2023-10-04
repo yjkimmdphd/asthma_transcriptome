@@ -123,12 +123,12 @@ p.counts<-mutate(p.counts,BAL_Date=BAL_Date%>%as.Date(format="%m/%d/%Y"),
 	Blood_draw_date=Blood_draw_date%>%as.Date(format="%m/%d/%Y"), 
 	BAL_CBC_delay=as.Date(BAL_Date,format="%m/%d/%Y")-as.Date(Blood_draw_date,format="%m/%d/%Y"))
 
-``` 
+ 
 ## some serum or Eos counts are NA of missing values
 # make phenotype and count table removing NA
 # could conveniently use na.omit(), but that would remove too many data points and reduce power 
-```
-```
+
+
 a<-sapply(p.counts,is.na)
 a1<- unique(which(a==TRUE)%%45)
 p.counts[a1,]
