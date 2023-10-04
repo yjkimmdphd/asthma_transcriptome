@@ -1,8 +1,3 @@
-########################
-## exploring DEG results
-########################
-
-
 ##############################################
 ## make data frame saving all significant DEG
 ##############################################
@@ -11,6 +6,10 @@
 # 1) load all DEG results in a DEG results folder
 # 2) extract significant DEG results 
 # 3) combine all analysis to one data.frame
+# fp = file path for the folder containing the DEG results
+# rt = name for the file containing results table 
+# example: fp<-file.path(getwd(),"output/DEG_2023-09-30")
+# example: rt<-"res.table_2023-09-30.csv"
 writeSigDeg<-function(fp,rt){
   library(tidyverse)
   library(data.table)
@@ -58,18 +57,3 @@ writeSigDeg<-function(fp,rt){
   }
   
 }
-
-#####################
-## write Sigdeg table
-#####################
-fp<-file.path(getwd(),"output/DEG_2023-09-30")
-rt<-"res.table_2023-09-30.csv"
-
-writeSigDeg(fp,rt)
-
-fp2<-file.path(getwd(),"output/DEG_2023-10-01")
-rt2<-"res.table_2023-10-01-rnaseq_v3.csv"
-
-writeSigDeg(fp2,rt2)
-
-table(sig.deg$genes)%>%as.data.frame()%>%arrange(desc(Freq))%>%print

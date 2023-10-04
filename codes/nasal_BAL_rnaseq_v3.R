@@ -205,16 +205,3 @@ write.csv(res.table,file.path(getwd(),"output",paste0("res.table_",Sys.Date(),".
 #with(subset(res4, padj<.05 & abs(log2FoldChange)>2), points(log2FoldChange, -log10(pvalue), pch=20, col="red"))
 
 
-######
-## write DEG table
-table(deg.tab$genes)%>%as.data.frame()%>%arrange(desc(Freq))
-
-# save results as CSV files
-write.csv(deg.tab,file.path(getwd(),"output",paste0("DEG_table_",Sys.Date(),".csv")))
-write.csv(res.table,file.path(getwd(),"output",paste0("res.table_",Sys.Date(),".csv")))
-for(i in zero.var){
-  a<-get(paste0("res",i))
-  write.csv(a[[1]],file.path(getwd(),"output",paste0("DEG_","res",i,"_",res.table[i,"fluid_cell"],"_",Sys.Date(),".csv")))
-  res.table[i,"output"]<-paste0("DEG_","res",i,"_",res.table[i,"fluid_cell"],"_",Sys.Date(),".csv")
-}
-

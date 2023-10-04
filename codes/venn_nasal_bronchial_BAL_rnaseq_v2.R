@@ -2,16 +2,22 @@
 # analyzing overlap of DEG in different analysis in nasal_bronchial_BAL_rnaseq_v2.R
 ###################################################################################
 library(dplyr)
-sig.deg<-file.path(getwd(),"output/sig_deg_2023-09-28.csv")%>%read.csv
-res.table<-file.path(getwd(),"output/res.table_2023-09-28.csv")%>%read.csv%>%na.omit
+library(ggvenn)
+library(gplots)
+sd.path<-file.path(getwd(),"output/sig_deg_2023-09-30.csv")
+rt.path<-file.path(getwd(),"output/DEG_2023-09-30/res.table_2023-09-30.csv")
+
+if(file.exists(sd.path)){ print(paste("sd.path exists?",file.exists(sd.path)))
+  sig.deg<-read.csv(sd.path)}
+if(file.exists(rt.path)){print(paste("rt.path exists?",file.exists(rt.path)))
+  res.table<-read.csv(rt.path)}
 sig.deg<-left_join(sig.deg,res.table)%>%group_by(fluid_cell,results,units,count_data)
 pred<-sig.deg$fluid_cell%>%unique
-# vendiagram of DEG of serum Eos abs count and % as predictors, if including 0% = Eos%
 
-library(gplots)
+# vendiagram of DEG of serum Eos abs count and % as predictors, 
 
-summarize(sig.deg,)
-
+# listing of of fluid, cell count type, results, and count data from which we are analyzing 
+summarize(sig.deg,)%>%write.csv(file.path(getwd(),"output/sigdeg_summary_2023_10-02.csv"))
 print(list(paste("number of predictors =",length(pred)),
            paste("predictors:", paste(pred,collapse=", ")))
       )
@@ -38,11 +44,21 @@ customVenn<-function(res,genelist){
   res.names<-sapply(r,
                     function(d)filter(res.table,results==d)%>%
                       select(count_data)%>%
-                      unlist%>%as.vector)
-  venn(a[r],names=res.names,simplify=TRUE)
+                      unlist%>%as.vector%>%unname)
+  venn(a[r],names=paste0(res.names,"(count) ",names(res.names)),simplify=TRUE)
 }
 
+
+coda<-sapply(c("res4","res14"),
+                   function(d)filter(res.table,results==d)%>%
+                     select(count_data)%>%
+                     unlist%>%as.character)
+coda
+
+
+
 bn.v.all.bn<-customVenn(c("res4","res14"),bn.gl)
+
 bn.v.pos.bn<-customVenn(c("res23","res24","res31","res32"),bn.gl)
 bw.v<-bw.gl%>%venn
 se.v.all.se<-customVenn(c("res6","res7","res16","res17"),se.gl)
