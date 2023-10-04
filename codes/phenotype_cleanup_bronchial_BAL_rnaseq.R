@@ -212,3 +212,31 @@ table(rowSums(x==0)==45)
 # about 4% of the genes have 0 counts across all samples 
 
 
+################################################################################################
+## subsetting counts table based on the BAL and CBC data availability and gene expression filter
+################################################################################################
+x.BalNeut<-x[,c( p.count.BalNeut$SampleID)] # count table for DEG using BAL Neut information as predictor
+x.SerCt<-x[,c(p.count.SerCt$SampleID)]# count table for DEG using serum cell counts information as predictor
+
+x2<-x[-drop,]
+
+x2.BalNeut<-x2[,c( p.count.BalNeut$SampleID)] # count table for DEG using BAL Neut information as predictor
+x2.SerCt<-x2[,c(p.count.SerCt$SampleID)]# count table for DEG using serum cell counts information as predictor
+
+#### filtering phenotype table based on cell counts
+p.BalEos.pos<-p.counts%>%filter(bal_Eos_ct>0)
+p.BalNeut.pos<-p.counts%>%filter(BAL_neut_ct>0)
+p.serEos.pos<-p.counts%>%filter(serum_Eos>0)
+p.serNeut.pos<-p.counts%>%filter(serum_Neut>0)
+
+#### make new count tables with sampleID filtered for cell counts
+x.BalEos.pos<-x[,p.BalEos.pos$SampleID]
+x.BalNeut.pos<-x[,p.BalNeut.pos$SampleID]
+x.serEos.pos<-x[,p.serEos.pos$SampleID]
+x.serNeut.pos<-x[,p.serNeut.pos$SampleID]
+
+x2.BalEos.pos<-x2[,p.BalEos.pos$SampleID]
+x2.BalNeut.pos<-x2[,p.BalNeut.pos$SampleID]
+x2.serEos.pos<-x2[,p.serEos.pos$SampleID]
+x2.serNeut.pos<-x2[,p.serNeut.pos$SampleID]
+

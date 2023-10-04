@@ -12,51 +12,12 @@ library(DESeq2)
 # load phenotype data by sourcing the following code 
 source("./codes/phenotype_cleanup_nasal_bronchial_BAL_rnaseq.R")
 
+
 # print dims of count data
 print(list("unfiltered countdata",`dim table`=dim(x)))
 print(list("filtered countdata",`dim table`=dim(x2)))
 write.csv(
   list("unfiltered countdata",`dim table`=dim(x),"filtered countdata",`dim table`=dim(x2)),file.path(getwd(),"output",paste0("count_data_dims",Sys.Date(),".csv")),row.names=FALSE)
-
-
-################################################################################################
-## subsetting counts table based on the BAL and CBC data availability and gene expression filter
-################################################################################################
-# setting a lcpm cutoff for filtering genes with very low counts
-lcpm.cutoff <- log2(10/M + 2/L) # M is median. L is mean. library size
-dropCutoff<-function(cutoff){
-  which(apply(lcpm.x3, 1, max) < cutoff)
-}
-drop <-dropCutoff(0) 
-drop2<-dropCutoff(lcpm.cutoff)
-dim(x3[-drop,])
-dim(x3[-drop2,])
-
-x.BalNeut<-x[,c( p.count.BalNeut$SampleID)] # count table for DEG using BAL Neut information as predictor
-x.SerCt<-x[,c(p.count.SerCt$SampleID)]# count table for DEG using serum cell counts information as predictor
-
-x2<-x[-drop,] #use gene cut off of lcpm = 0
-
-x2.BalNeut<-x2[,c( p.count.BalNeut$SampleID)] # count table for DEG using BAL Neut information as predictor
-x2.SerCt<-x2[,c(p.count.SerCt$SampleID)]# count table for DEG using serum cell counts information as predictor
-
-#### filtering phenotype table based on cell counts
-p.BalEos.pos<-p.counts%>%filter(bal_Eos_ct>0)
-p.BalNeut.pos<-p.counts%>%filter(BAL_neut_ct>0)
-p.serEos.pos<-p.counts%>%filter(serum_Eos>0)
-p.serNeut.pos<-p.counts%>%filter(serum_Neut>0)
-
-#### make new count tables with sampleID filtered for cell counts
-x.BalEos.pos<-x[,p.BalEos.pos$SampleID]
-x.BalNeut.pos<-x[,p.BalNeut.pos$SampleID]
-x.serEos.pos<-x[,p.serEos.pos$SampleID]
-x.serNeut.pos<-x[,p.serNeut.pos$SampleID]
-
-x2.BalEos.pos<-x2[,p.BalEos.pos$SampleID]
-x2.BalNeut.pos<-x2[,p.BalNeut.pos$SampleID]
-x2.serEos.pos<-x2[,p.serEos.pos$SampleID]
-x2.serNeut.pos<-x2[,p.serNeut.pos$SampleID]
-
 
 
 
