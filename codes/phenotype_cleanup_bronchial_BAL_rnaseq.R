@@ -123,11 +123,12 @@ p.counts<-mutate(p.counts,BAL_Date=BAL_Date%>%as.Date(format="%m/%d/%Y"),
 	Blood_draw_date=Blood_draw_date%>%as.Date(format="%m/%d/%Y"), 
 	BAL_CBC_delay=as.Date(BAL_Date,format="%m/%d/%Y")-as.Date(Blood_draw_date,format="%m/%d/%Y"))
 
-
+``` 
 ## some serum or Eos counts are NA of missing values
 # make phenotype and count table removing NA
 # could conveniently use na.omit(), but that would remove too many data points and reduce power 
-
+```
+```
 a<-sapply(p.counts,is.na)
 a1<- unique(which(a==TRUE)%%45)
 p.counts[a1,]
@@ -211,6 +212,15 @@ lcpm.x3<-cpm(x3,log=TRUE)
 table(rowSums(x==0)==45)
 # about 4% of the genes have 0 counts across all samples 
 
+# setting a lcpm cutoff for filtering genes with very low counts
+lcpm.cutoff <- log2(10/M + 2/L) # M is median. L is mean. library size
+dropCutoff<-function(cutoff){
+  which(apply(lcpm.x3, 1, max) < cutoff)
+}
+d1<-dropCutoff(0) 
+d2<-dropCutoff(lcpm.cutoff)
+dim(x3[-d1,])
+dim(x3[-d2,])
 
 ################################################################################################
 ## subsetting counts table based on the BAL and CBC data availability and gene expression filter
@@ -218,7 +228,7 @@ table(rowSums(x==0)==45)
 x.BalNeut<-x[,c( p.count.BalNeut$SampleID)] # count table for DEG using BAL Neut information as predictor
 x.SerCt<-x[,c(p.count.SerCt$SampleID)]# count table for DEG using serum cell counts information as predictor
 
-x2<-x[-drop,]
+x2<-x[-d1,]
 
 x2.BalNeut<-x2[,c( p.count.BalNeut$SampleID)] # count table for DEG using BAL Neut information as predictor
 x2.SerCt<-x2[,c(p.count.SerCt$SampleID)]# count table for DEG using serum cell counts information as predictor

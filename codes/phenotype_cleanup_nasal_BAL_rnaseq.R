@@ -115,17 +115,19 @@ p.counts<-left_join(p.counts,batch.info.BAL, by="SampleID")
 p.counts$Batch<-factor(p.counts$Batch, levels=unique(batch.info.BAL$Batch))
 p.counts$Race_corrected<-factor(p.counts$Race_corrected, levels=p.counts$Race_corrected%>%unique)
 
+```
 ################################################
 ## calculate time difference between BAL and CBC
 ################################################
+``
 p.counts<-mutate(p.counts,BAL_Date=BAL_Date%>%as.Date(format="%m/%d/%Y"), 
 	Blood_draw_date=Blood_draw_date%>%as.Date(format="%m/%d/%Y"), 
 	BAL_CBC_delay=as.Date(BAL_Date,format="%m/%d/%Y")-as.Date(Blood_draw_date,format="%m/%d/%Y"))
-
-
+```
 ## some serum or Eos counts are NA of missing values
 # make phenotype and count table removing NA
 # could conveniently use na.omit(), but that would remove too many data points and reduce power 
+``
 
 a<-sapply(p.counts,is.na)
 a1<- unique(which(a==TRUE)%%45)
@@ -139,8 +141,8 @@ sapply(p.count.SerCt,is.na)%>%colSums() # check if cols with serum of the new da
 
 # should use 'p.count.BalNeut' for DEG using BAL Neut Ct or %
 # should use 'p.count.SerCt' for DEG using Ser counts 
-
 # summary statistics of each cell count
+
 pc.cn<-colnames(p.counts)
 pc.cn<-pc.cn[-grep("log",pc.cn)]
 pc.cn<-pc.cn[c(3:7,9:13)]
@@ -215,10 +217,10 @@ lcpm.cutoff <- log2(10/M + 2/L) # M is median. L is mean. library size
 dropCutoff<-function(cutoff){
   which(apply(lcpm.x3, 1, max) < cutoff)
 }
-drop <-dropCutoff(0) 
-drop2<-dropCutoff(lcpm.cutoff)
-dim(x3[-drop,])
-dim(x3[-drop2,])
+d1<-dropCutoff(0) 
+d2<-dropCutoff(lcpm.cutoff)
+dim(x3[-d1,])
+dim(x3[-d2,])
 
 ################################################################################################
 ## subsetting counts table based on the BAL and CBC data availability and gene expression filter
@@ -226,7 +228,7 @@ dim(x3[-drop2,])
 x.BalNeut<-x[,c( p.count.BalNeut$SampleID)] # count table for DEG using BAL Neut information as predictor
 x.SerCt<-x[,c(p.count.SerCt$SampleID)]# count table for DEG using serum cell counts information as predictor
 
-x2<-x[-drop,]
+x2<-x[-d1,]
 
 x2.BalNeut<-x2[,c( p.count.BalNeut$SampleID)] # count table for DEG using BAL Neut information as predictor
 x2.SerCt<-x2[,c(p.count.SerCt$SampleID)]# count table for DEG using serum cell counts information as predictor
