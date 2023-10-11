@@ -131,11 +131,11 @@ deseq2DEG.disc<-function(countdata,coldata,des,resultname){
 
 # make model
 ml<-list(zeroBalEos=model.matrix(~ zero.BALEos + Batch, p.counts),
-         zero.BALNeut=model.matrix(~ zero.BALNeut + Batch, p.counts),
-         zero.serEos=model.matrix(~ zero.serEos + Batch, p.counts),
+         zero.BALNeut=model.matrix(~ zero.BALNeut + Batch, p.count.BalNeut),
+         zero.serEos=model.matrix(~ zero.serEos + Batch, p.count.SerCt),
          zeroBalEos=model.matrix(~ zero.BALEos + Batch, p.counts),
-         zero.BALNeut=model.matrix(~ zero.BALNeut + Batch, p.counts),
-         zero.serEos=model.matrix(~ zero.serEos + Batch, p.counts))
+         zero.BALNeut=model.matrix(~ zero.BALNeut + Batch, p.count.BalNeut),
+         zero.serEos=model.matrix(~ zero.serEos + Batch, p.count.SerCt))
 
 zero.var<-grep("zero",res.table$fluid_cell)
 print(zero.var)
@@ -189,3 +189,5 @@ for(i in zero.var){
   write.csv(a[[1]],file.path(getwd(),"output",paste0("DEG_","res",i,"_",res.table[i,"fluid_cell"],"_",Sys.Date(),".csv")))
   res.table[i,"output"]<-paste0("DEG_","res",i,"_",res.table[i,"fluid_cell"],"_",Sys.Date(),".csv")
 }
+
+print(sessionInfo())
